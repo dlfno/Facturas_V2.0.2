@@ -118,7 +118,7 @@ Vista general con toggle para ver datos consolidados, solo DLG o solo SMGS:
 
 ```bash
 # Clonar el repositorio
-git clone <url-del-repo>
+git clone https://github.com/dlfno/Facturas_V2.0.2.git
 cd Facturas_V2.0.2
 
 # Instalar dependencias del servidor
@@ -141,7 +141,7 @@ Abrir `http://localhost:5173` en desarrollo o `http://localhost:3000` en producc
 
 ```powershell
 # Clonar el repositorio
-git clone <url-del-repo>
+git clone https://github.com/dlfno/Facturas_V2.0.2.git
 cd Facturas_V2.0.2
 
 # Instalar dependencias del servidor
@@ -174,7 +174,7 @@ Abrir `http://localhost:5173` en desarrollo o `http://localhost:3000` en producc
 
 ```bash
 # Clonar el repositorio
-git clone <url-del-repo>
+git clone https://github.com/dlfno/Facturas_V2.0.2.git
 cd Facturas_V2.0.2
 
 # Levantar el contenedor
