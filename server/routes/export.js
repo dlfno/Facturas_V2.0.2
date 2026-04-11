@@ -98,6 +98,7 @@ router.get('/', async (req, res) => {
 
   const columns = [
     { header: 'CFDI', key: 'cfdi', width: 12 },
+    { header: 'Folio Fiscal', key: 'uuid', width: 38 },
     { header: 'Fecha Emisión', key: 'fecha_emision', width: 14 },
     { header: 'RFC', key: 'rfc_receptor', width: 16 },
     { header: 'Cliente', key: 'nombre_receptor', width: 30 },
@@ -128,6 +129,7 @@ router.get('/', async (req, res) => {
   for (const row of rows) {
     const dataRow = sheet.addRow({
       cfdi: row.serie ? `${row.serie}${row.folio}` : row.folio,
+      uuid: row.uuid,
       fecha_emision: row.fecha_emision,
       rfc_receptor: row.rfc_receptor,
       nombre_receptor: row.nombre_receptor,

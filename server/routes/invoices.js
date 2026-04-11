@@ -92,7 +92,7 @@ router.get('/', (req, res) => {
 
   // Validate sort column
   const allowedSorts = [
-    'fecha_emision', 'folio', 'nombre_receptor', 'total', 'subtotal',
+    'fecha_emision', 'folio', 'uuid', 'nombre_receptor', 'total', 'subtotal',
     'fecha_tentativa_pago', 'estado', 'proyecto', 'moneda', 'created_at',
   ];
   const sortCol = allowedSorts.includes(sort) ? sort : 'fecha_emision';
@@ -200,6 +200,17 @@ router.patch('/:id', (req, res) => {
   ).get(parseInt(id));
   const today = new Date().toISOString().substring(0, 10);
   res.json({ ...updated, nombre_display: updated.cliente_alias || updated.nombre_receptor, estado_visual: computeEstadoVisual(updated, today) });
+});
+
+// POST /api/invoices/bulk-delete
+router.post('/bulk-delete', (req, res) => {
+  const { ids } = req.body;
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'Se requiere un array de IDs' });
+  }
+  const placeholders = ids.map(() => '?').join(',');
+  const result = db.prepare(`DELETE FROM invoices WHERE id IN (${placeholders})`).run(...ids.map(Number));
+  res.json({ deleted: result.changes });
 });
 
 // DELETE /api/invoices/:id

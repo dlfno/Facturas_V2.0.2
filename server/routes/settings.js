@@ -20,13 +20,38 @@ router.post('/rfcs', (req, res) => {
   }
   try {
     db.prepare('INSERT INTO company_rfcs (rfc, empresa) VALUES (?, ?)').run(rfc, empresa);
-    res.json({ ok: true });
   } catch (err) {
     if (err.message.includes('UNIQUE')) {
-      return res.status(409).json({ error: 'Este RFC ya está registrado' });
+      // If already exists, update the empresa assignment
+      db.prepare('UPDATE company_rfcs SET empresa = ? WHERE rfc = ?').run(empresa, rfc);
+    } else {
+      throw err;
     }
-    throw err;
   }
+
+  // Reassign existing invoices that have this RFC as emisor
+  const result = db.prepare(
+    'UPDATE invoices SET empresa = ?, updated_at = datetime(\'now\') WHERE rfc_emisor = ?'
+  ).run(empresa, rfc);
+
+  res.json({ ok: true, reassigned: result.changes });
+});
+
+// POST /api/settings/reassign — re-scan all invoices against current RFC config
+router.post('/reassign', (req, res) => {
+  const rfcMap = db.prepare('SELECT rfc, empresa FROM company_rfcs').all();
+  let total = 0;
+  const reassignOne = db.prepare(
+    'UPDATE invoices SET empresa = ?, updated_at = datetime(\'now\') WHERE rfc_emisor = ? AND empresa != ?'
+  );
+  const tx = db.transaction(() => {
+    for (const { rfc, empresa } of rfcMap) {
+      const r = reassignOne.run(empresa, rfc, empresa);
+      total += r.changes;
+    }
+  });
+  tx();
+  res.json({ ok: true, reassigned: total });
 });
 
 // DELETE /api/settings/rfcs/:id

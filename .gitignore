@@ -4,4 +4,7 @@ dist/
 client/dist/
 .DS_Store
 *.db
+*.db-shm
+*.db-wal
 uploads/
+test-xmls/

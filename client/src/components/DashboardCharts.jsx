@@ -57,11 +57,14 @@ export default function DashboardCharts({ statusCounts, monthlyChart, topCliente
     };
   });
 
-  // Top clientes - truncate names
+  // Top clientes - truncate to 15 chars for single-line display
   const clientesData = (topClientes || []).map((item) => ({
     ...item,
-    label: item.cliente.length > 20 ? item.cliente.substring(0, 20) + '...' : item.cliente,
+    label: item.cliente.length > 15 ? item.cliente.substring(0, 15) + '...' : item.cliente,
   }));
+
+  // Dynamic height for top clientes based on count
+  const clientesHeight = Math.max(250, clientesData.length * 36);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -71,17 +74,16 @@ export default function DashboardCharts({ statusCounts, monthlyChart, topCliente
           Distribución por Estado
         </h3>
         {pieData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
                 data={pieData}
                 cx="50%"
-                cy="50%"
+                cy="45%"
                 innerRadius={50}
-                outerRadius={90}
+                outerRadius={85}
                 dataKey="value"
-                label={({ name, value }) => `${name}: ${value}`}
-                labelLine={false}
+                label={false}
               >
                 {pieData.map((entry) => (
                   <Cell
@@ -90,10 +92,18 @@ export default function DashboardCharts({ statusCounts, monthlyChart, topCliente
                   />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip
+                formatter={(value, name) => [value, name]}
+                contentStyle={{ fontSize: '12px' }}
+              />
               <Legend
-                wrapperStyle={{ fontSize: '11px' }}
-                formatter={(value) => <span className="text-gray-600">{value}</span>}
+                verticalAlign="bottom"
+                wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
+                formatter={(value, entry) => (
+                  <span className="text-gray-600">
+                    {value}: {entry.payload.value}
+                  </span>
+                )}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -108,7 +118,7 @@ export default function DashboardCharts({ statusCounts, monthlyChart, topCliente
           Facturación Mensual (MXN)
         </h3>
         {monthlyData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={300}>
             <BarChart data={monthlyData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} />
@@ -131,18 +141,25 @@ export default function DashboardCharts({ statusCounts, monthlyChart, topCliente
           Top 10 Clientes (Pendiente)
         </h3>
         {clientesData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={clientesData} layout="vertical">
+          <ResponsiveContainer width="100%" height={clientesHeight}>
+            <BarChart data={clientesData} layout="vertical" margin={{ left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={formatMoneyShort} />
               <YAxis
                 type="category"
                 dataKey="label"
-                tick={{ fontSize: 10 }}
-                width={120}
+                tick={{ fontSize: 11, width: 130 }}
+                width={140}
+                interval={0}
               />
-              <Tooltip formatter={(v) => formatMoney(v)} />
-              <Bar dataKey="monto" fill="#f59e0b" radius={[0, 4, 4, 0]} name="Pendiente" />
+              <Tooltip
+                formatter={(v) => formatMoney(v)}
+                labelFormatter={(label) => {
+                  const item = clientesData.find((c) => c.label === label);
+                  return item ? item.cliente : label;
+                }}
+              />
+              <Bar dataKey="monto" fill="#f59e0b" radius={[0, 4, 4, 0]} name="Pendiente" barSize={20} />
             </BarChart>
           </ResponsiveContainer>
         ) : (

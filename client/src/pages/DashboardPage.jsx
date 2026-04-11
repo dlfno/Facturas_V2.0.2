@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import DashboardCards from '../components/DashboardCards';
 import DashboardCharts from '../components/DashboardCharts';
-import StatusBadge from '../components/StatusBadge';
-import { getDashboard } from '../api';
+import { getDashboard, updateInvoice } from '../api';
 
 function formatMoney(n) {
   return (n || 0).toLocaleString('es-MX', {
@@ -22,15 +21,33 @@ export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState('consolidado');
   const [loading, setLoading] = useState(true);
+  const [editingFechaId, setEditingFechaId] = useState(null);
+  const [fechaValue, setFechaValue] = useState('');
 
-  useEffect(() => {
+  const fetchData = () => {
     setLoading(true);
     const empresa = tab === 'consolidado' ? null : tab.toUpperCase();
     getDashboard(empresa)
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchData();
   }, [tab]);
+
+  const saveFecha = async (id) => {
+    if (!fechaValue) return;
+    try {
+      await updateInvoice(id, { fecha_tentativa_pago: fechaValue });
+      setEditingFechaId(null);
+      setFechaValue('');
+      fetchData();
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  };
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
@@ -121,14 +138,14 @@ export default function DashboardPage() {
                 Sin Fecha de Pago ({data.sinFecha?.length || 0})
               </h3>
               {data.sinFecha?.length > 0 ? (
-                <div className="overflow-auto max-h-64">
+                <div className="overflow-auto max-h-80">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-gray-500 border-b">
                         <th className="pb-2">CFDI</th>
                         <th className="pb-2">Cliente</th>
                         <th className="pb-2">Total</th>
-                        <th className="pb-2">Emitida</th>
+                        <th className="pb-2">Fecha Tentativa</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -143,7 +160,36 @@ export default function DashboardPage() {
                           <td className="py-2 font-mono">
                             ${formatMoney(inv.total)}
                           </td>
-                          <td className="py-2">{formatDate(inv.fecha_emision)}</td>
+                          <td className="py-2">
+                            {editingFechaId === inv.id ? (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="date"
+                                  value={fechaValue}
+                                  onChange={(e) => setFechaValue(e.target.value)}
+                                  className="border rounded px-1.5 py-0.5 text-xs w-32"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveFecha(inv.id);
+                                    if (e.key === 'Escape') setEditingFechaId(null);
+                                  }}
+                                />
+                                <button
+                                  onClick={() => saveFecha(inv.id)}
+                                  className="text-green-600 hover:bg-green-50 rounded p-0.5 text-xs font-medium"
+                                >
+                                  OK
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => { setEditingFechaId(inv.id); setFechaValue(''); }}
+                                className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                Asignar fecha
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

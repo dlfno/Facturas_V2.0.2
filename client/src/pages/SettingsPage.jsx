@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
-import { getRfcs, addRfc, deleteRfc, getAliases, saveAlias, deleteAlias } from '../api';
+import { Plus, Trash2, Pencil, Check, X, RefreshCw } from 'lucide-react';
+import { getRfcs, addRfc, deleteRfc, reassignRfcs, getAliases, saveAlias, deleteAlias } from '../api';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function SettingsPage() {
   const [rfcs, setRfcs] = useState([]);
   const [newRfc, setNewRfc] = useState('');
   const [newEmpresa, setNewEmpresa] = useState('DLG');
   const [rfcError, setRfcError] = useState('');
+  const [rfcSuccess, setRfcSuccess] = useState('');
 
   const [aliases, setAliases] = useState([]);
   const [editingAliasId, setEditingAliasId] = useState(null);
   const [editAliasValue, setEditAliasValue] = useState('');
   const [aliasError, setAliasError] = useState('');
+
+  const [confirmAction, setConfirmAction] = useState(null);
 
   const fetchRfcs = () => getRfcs().then(setRfcs).catch(console.error);
   const fetchAliases = () => getAliases().then(setAliases).catch(console.error);
@@ -24,19 +28,43 @@ export default function SettingsPage() {
   const handleAddRfc = async () => {
     if (!newRfc.trim()) return;
     setRfcError('');
+    setRfcSuccess('');
     try {
-      await addRfc(newRfc.trim().toUpperCase(), newEmpresa);
+      const res = await addRfc(newRfc.trim().toUpperCase(), newEmpresa);
       setNewRfc('');
       fetchRfcs();
+      if (res.reassigned > 0) {
+        setRfcSuccess(`RFC agregado. ${res.reassigned} factura(s) reasignada(s) a ${newEmpresa}.`);
+      }
     } catch (err) {
       setRfcError(err.message);
     }
   };
 
-  const handleDeleteRfc = async (id) => {
-    if (!confirm('¿Eliminar este RFC?')) return;
-    await deleteRfc(id);
-    fetchRfcs();
+  const handleReassign = async () => {
+    setRfcError('');
+    setRfcSuccess('');
+    try {
+      const res = await reassignRfcs();
+      if (res.reassigned > 0) {
+        setRfcSuccess(`${res.reassigned} factura(s) reasignada(s) según la configuración actual de RFCs.`);
+      } else {
+        setRfcSuccess('Todas las facturas ya están asignadas correctamente.');
+      }
+    } catch (err) {
+      setRfcError(err.message);
+    }
+  };
+
+  const requestDeleteRfc = (id) => {
+    setConfirmAction({
+      title: 'Eliminar RFC',
+      message: '¿Eliminar este RFC de la configuración?',
+      action: async () => {
+        await deleteRfc(id);
+        fetchRfcs();
+      },
+    });
   };
 
   const startEditAlias = (a) => {
@@ -56,10 +84,26 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDeleteAlias = async (id) => {
-    if (!confirm('¿Eliminar este alias? Se mostrará el nombre del XML.')) return;
-    await deleteAlias(id);
-    fetchAliases();
+  const requestDeleteAlias = (id) => {
+    setConfirmAction({
+      title: 'Eliminar alias',
+      message: '¿Eliminar este alias? Se mostrará el nombre original del XML.',
+      action: async () => {
+        await deleteAlias(id);
+        fetchAliases();
+      },
+    });
+  };
+
+  const executeConfirm = async () => {
+    if (confirmAction?.action) {
+      try {
+        await confirmAction.action();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+    setConfirmAction(null);
   };
 
   return (
@@ -73,9 +117,20 @@ export default function SettingsPage() {
 
       {/* Section 1: RFCs */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-2">RFCs por Empresa</h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-gray-800">RFCs por Empresa</h2>
+          <button
+            onClick={handleReassign}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200"
+            title="Reasignar facturas existentes según los RFCs configurados"
+          >
+            <RefreshCw size={14} />
+            Reasignar facturas
+          </button>
+        </div>
         <p className="text-sm text-gray-500 mb-4">
           El RFC del emisor en el XML determina si la factura pertenece a DLG o SMGS.
+          Al agregar un RFC, las facturas existentes con ese emisor se reasignan automáticamente.
         </p>
 
         <div className="flex gap-2 mb-4">
@@ -105,6 +160,11 @@ export default function SettingsPage() {
         </div>
 
         {rfcError && <p className="text-red-600 text-sm mb-3">{rfcError}</p>}
+        {rfcSuccess && (
+          <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-700 mb-3">
+            {rfcSuccess}
+          </div>
+        )}
 
         <div className="divide-y">
           {rfcs.map((r) => (
@@ -122,7 +182,7 @@ export default function SettingsPage() {
                 </span>
               </div>
               <button
-                onClick={() => handleDeleteRfc(r.id)}
+                onClick={() => requestDeleteRfc(r.id)}
                 className="p-1.5 text-red-500 hover:bg-red-50 rounded"
               >
                 <Trash2 size={16} />
@@ -209,7 +269,7 @@ export default function SettingsPage() {
                               <Pencil size={14} />
                             </button>
                             <button
-                              onClick={() => handleDeleteAlias(a.id)}
+                              onClick={() => requestDeleteAlias(a.id)}
                               className="p-1 text-red-500 hover:bg-red-50 rounded"
                               title="Eliminar alias"
                             >
@@ -230,6 +290,17 @@ export default function SettingsPage() {
           </p>
         )}
       </div>
+
+      {confirmAction && (
+        <ConfirmModal
+          title={confirmAction.title}
+          message={confirmAction.message}
+          confirmLabel="Eliminar"
+          danger
+          onConfirm={executeConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
     </div>
   );
 }

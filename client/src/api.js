@@ -30,6 +30,13 @@ export function deleteInvoice(id) {
   return request(`/invoices/${id}`, { method: 'DELETE' });
 }
 
+export function deleteInvoices(ids) {
+  return request('/invoices/bulk-delete', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  });
+}
+
 export async function uploadFiles(files, empresa) {
   const formData = new FormData();
   for (const file of files) {
@@ -74,6 +81,10 @@ export function addRfc(rfc, empresa) {
 
 export function deleteRfc(id) {
   return request(`/settings/rfcs/${id}`, { method: 'DELETE' });
+}
+
+export function reassignRfcs() {
+  return request('/settings/reassign', { method: 'POST' });
 }
 
 export function getAliases() {
