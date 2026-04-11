@@ -1,0 +1,11 @@
+node_modules
+client/node_modules
+client/dist
+data
+uploads
+test-xmls
+.git
+.DS_Store
+*.db
+*.db-shm
+*.db-wal

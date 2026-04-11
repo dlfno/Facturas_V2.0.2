@@ -1,0 +1,11 @@
+services:
+  cobranza:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - cobranza-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  cobranza-data:
