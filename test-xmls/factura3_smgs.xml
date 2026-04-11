@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Version="4.0" Serie="B" Folio="253" Fecha="2026-01-05T12:00:00" SubTotal="40000.00" Total="46400.00" Moneda="MXN" MetodoPago="PPD" FormaPago="99">
+  <cfdi:Emisor Rfc="SMG200820ABC" Nombre="SMGS ABOGADOS SC" />
+  <cfdi:Receptor Rfc="CMS211125CG4" Nombre="CONSTELACION MEXICANA DE SOLARA" UsoCFDI="G03" />
+  <cfdi:Conceptos>
+    <cfdi:Concepto Descripcion="Servicios Legales (enero)" />
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="6400.00">
+    <cfdi:Traslados>
+      <cfdi:Traslado Impuesto="002" Importe="6400.00" />
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital UUID="C3D4E5F6-A7B8-9012-CDEF-345678901234" />
+  </cfdi:Complemento>
+</cfdi:Comprobante>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Version="4.0" Serie="A" Folio="2216" Fecha="2026-01-05T12:00:00" SubTotal="6000.00" Total="6960.00" Moneda="USD" TipoCambio="18.0012" MetodoPago="PUE" FormaPago="03">
+  <cfdi:Emisor Rfc="DLG200820EE4" Nombre="DLG ABOGADOS SC" />
+  <cfdi:Receptor Rfc="XEXX010101000" Nombre="BINANCE INVESTMENTS CO., LTD" UsoCFDI="G03" />
+  <cfdi:Conceptos>
+    <cfdi:Concepto Descripcion="GR services - January" />
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="960.00">
+    <cfdi:Traslados>
+      <cfdi:Traslado Impuesto="002" Importe="960.00" />
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital UUID="B2C3D4E5-F6A7-8901-BCDE-F23456789012" />
+  </cfdi:Complemento>
+</cfdi:Comprobante>

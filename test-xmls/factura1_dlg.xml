@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Version="4.0" Serie="A" Folio="2215" Fecha="2026-01-05T12:00:00" SubTotal="50000.00" Total="58000.00" Moneda="MXN" MetodoPago="PPD" FormaPago="99">
+  <cfdi:Emisor Rfc="DLG200820EE4" Nombre="DLG ABOGADOS SC" />
+  <cfdi:Receptor Rfc="BAP000512BP0" Nombre="BIOMETRIA APLICADA" UsoCFDI="G03" />
+  <cfdi:Conceptos>
+    <cfdi:Concepto Descripcion="Servicios legales diciembre" />
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="8000.00">
+    <cfdi:Traslados>
+      <cfdi:Traslado Impuesto="002" Importe="8000.00" />
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital UUID="A1B2C3D4-E5F6-7890-ABCD-EF1234567890" />
+  </cfdi:Complemento>
+</cfdi:Comprobante>
