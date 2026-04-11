@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronUp, ChevronDown, Trash2, Tag, Undo2, Check, X } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronRight, Trash2, Tag, Undo2, Check, X } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import AliasModal from './AliasModal';
 import ConfirmModal from './ConfirmModal';
@@ -20,7 +20,7 @@ function formatDate(d) {
 }
 
 const COLUMNS = [
-  { key: 'folio', label: 'CFDI', sortable: true, width: 'w-20' },
+  { key: 'folio', label: 'CFDI', sortable: true, width: 'w-28' },
   { key: 'uuid', label: 'Folio Fiscal', sortable: false, width: 'w-72' },
   { key: 'fecha_emision', label: 'Fecha Emisión', sortable: true, width: 'w-28' },
   { key: 'nombre_receptor', label: 'Cliente', sortable: true, width: 'w-48' },
@@ -66,14 +66,15 @@ function InlineEdit({ value, type, onSave, onCancel }) {
   }
 
   return (
-    <input
+    <textarea
       ref={ref}
-      type="text"
       value={val}
       onChange={(e) => setVal(e.target.value)}
       onBlur={save}
-      onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') onCancel(); }}
-      className="border border-blue-400 rounded px-1 py-0.5 text-sm w-full bg-blue-50 focus:outline-none"
+      onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); save(); } if (e.key === 'Escape') onCancel(); }}
+      placeholder="Ctrl+Enter para guardar, Esc para cancelar"
+      className="border border-blue-400 rounded px-1 py-0.5 text-sm w-full bg-blue-50 focus:outline-none min-w-[200px] resize-y"
+      rows={3}
     />
   );
 }
@@ -115,6 +116,8 @@ export default function InvoiceTable({
   const [pagoFecha, setPagoFecha] = useState('');
   // Per-cell editing: { invoiceId, key }
   const [editingCell, setEditingCell] = useState(null);
+  // Expanded text cells
+  const [expandedCells, setExpandedCells] = useState(new Set());
 
   const allSelected = invoices.length > 0 && selected.size === invoices.length;
 
@@ -213,6 +216,16 @@ export default function InvoiceTable({
   const isEditing = (invId, key) =>
     editingCell && editingCell.invoiceId === invId && editingCell.key === key;
 
+  const toggleExpand = (invId, key) => {
+    const cellKey = `${invId}-${key}`;
+    const next = new Set(expandedCells);
+    if (next.has(cellKey)) next.delete(cellKey);
+    else next.add(cellKey);
+    setExpandedCells(next);
+  };
+
+  const isCellExpanded = (invId, key) => expandedCells.has(`${invId}-${key}`);
+
   const renderCell = (inv, col) => {
     // Click-to-edit cells
     if (col.clickEdit && isEditing(inv.id, col.key)) {
@@ -260,14 +273,26 @@ export default function InvoiceTable({
         );
       }
       // text fields: proyecto, comentarios
+      const expanded = isCellExpanded(inv.id, col.key);
       return (
-        <button
-          onClick={() => setEditingCell({ invoiceId: inv.id, key: col.key })}
-          className="cursor-pointer hover:bg-blue-50 rounded px-1 py-0.5 -mx-1 text-left w-full block truncate max-w-[200px]"
-          title={inv[col.key] || 'Clic para editar'}
-        >
-          {inv[col.key] || <span className="text-gray-300 italic text-xs">Vacío</span>}
-        </button>
+        <div className="flex items-start gap-1">
+          {inv[col.key] && (
+            <button
+              onClick={() => toggleExpand(inv.id, col.key)}
+              className="shrink-0 p-0.5 text-gray-400 hover:text-blue-600 rounded"
+              title={expanded ? 'Colapsar' : 'Expandir'}
+            >
+              {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            </button>
+          )}
+          <button
+            onClick={() => setEditingCell({ invoiceId: inv.id, key: col.key })}
+            className={`cursor-pointer hover:bg-blue-50 rounded px-1 py-0.5 -mx-1 text-left w-full block ${expanded ? 'whitespace-normal break-words' : 'truncate max-w-[200px]'}`}
+            title={inv[col.key] || 'Clic para editar'}
+          >
+            {inv[col.key] || <span className="text-gray-300 italic text-xs">Vacío</span>}
+          </button>
+        </div>
       );
     }
 
@@ -364,18 +389,24 @@ export default function InvoiceTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-slate-800 text-white">
-              <th className="px-3 py-3 w-10">
-                <input type="checkbox" checked={allSelected} onChange={toggleAll} className="rounded border-gray-300 cursor-pointer" />
-              </th>
               {COLUMNS.map((col) => (
                 <th
                   key={col.key}
                   className={`px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider ${col.width} ${
                     col.sortable ? 'cursor-pointer select-none hover:bg-slate-700' : ''
-                  }`}
+                  }${col.key === 'folio' ? ' sticky left-0 z-20 bg-slate-800 border-r border-slate-600' : ''}`}
                   onClick={() => col.sortable && onSort?.(col.key)}
                 >
                   <div className="flex items-center gap-1">
+                    {col.key === 'folio' && (
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={toggleAll}
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded border-gray-300 cursor-pointer"
+                      />
+                    )}
                     {col.label}
                     {col.sortable && sort === col.key && (
                       order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
@@ -389,22 +420,37 @@ export default function InvoiceTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {invoices.map((inv) => {
+            {invoices.map((inv, idx) => {
               const isSelected = selected.has(inv.id);
+              const isOdd = idx % 2 === 1;
+              const rowBg = isSelected ? 'bg-blue-50/50' : isOdd ? 'bg-gray-100/70' : '';
+              const stickyBg = isSelected ? 'bg-blue-50' : isOdd ? 'bg-gray-100' : 'bg-white';
               return (
                 <tr
                   key={inv.id}
                   id={`invoice-${inv.id}`}
-                  className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-blue-50/50' : ''}`}
+                  className={`group hover:bg-gray-200/60 ${rowBg}`}
                 >
-                  <td className="px-3 py-2.5">
-                    <input type="checkbox" checked={isSelected} onChange={() => toggleOne(inv.id)} className="rounded border-gray-300 cursor-pointer" />
-                  </td>
-                  {COLUMNS.map((col) => (
-                    <td key={col.key} className="px-3 py-2.5 whitespace-nowrap">
-                      {renderCell(inv, col)}
+                  {COLUMNS.map((col) => {
+                    const textCellOpen = col.clickEdit === 'text' && (isCellExpanded(inv.id, col.key) || isEditing(inv.id, col.key));
+                    return (
+                    <td
+                      key={col.key}
+                      className={`px-3 py-2.5${textCellOpen ? '' : ' whitespace-nowrap'}${
+                        col.key === 'folio'
+                          ? ` sticky left-0 z-10 ${stickyBg} group-hover:bg-gray-200 border-r border-gray-200`
+                          : ''
+                      }`}
+                    >
+                      {col.key === 'folio' ? (
+                        <div className="flex items-center gap-2">
+                          <input type="checkbox" checked={isSelected} onChange={() => toggleOne(inv.id)} className="rounded border-gray-300 cursor-pointer" />
+                          {renderCell(inv, col)}
+                        </div>
+                      ) : renderCell(inv, col)}
                     </td>
-                  ))}
+                    );
+                  })}
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-1">
                       {inv.estado === 'PAGADO' ? (
@@ -438,7 +484,7 @@ export default function InvoiceTable({
             })}
             {invoices.length === 0 && (
               <tr>
-                <td colSpan={COLUMNS.length + 2} className="px-6 py-12 text-center text-gray-400">
+                <td colSpan={COLUMNS.length + 1} className="px-6 py-12 text-center text-gray-400">
                   No se encontraron facturas
                 </td>
               </tr>
