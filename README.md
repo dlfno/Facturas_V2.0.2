@@ -16,13 +16,16 @@ Sistema web para gestión de cobranza de facturas CFDI. Reemplaza el proceso man
 - Al cargar un XML, el sistema identifica automáticamente si la factura pertenece a DLG o SMGS comparando el RFC del emisor contra los RFCs registrados en Configuración
 - Si el RFC no está registrado, se puede seleccionar la empresa manualmente desde la zona de carga
 - Los RFCs se administran desde la pantalla de Configuración en el sidebar
+- Al agregar o corregir un RFC, las facturas existentes se reasignan automáticamente a la empresa correcta
 
 ### Tabla de Facturas
 - Sección separada para cada empresa (DLG y SMGS) accesible desde el sidebar
-- Columnas: CFDI (serie+folio), Fecha Emisión, Cliente, Concepto, Proyecto, Moneda, Subtotal, IVA, Total, Fecha Tentativa, Estado, Comentarios
-- Edición inline de campos manuales: hacer clic en el lápiz de una fila para editar proyecto, fecha tentativa de pago, comentarios y estado
-- Cambio rápido de estado a "Pagado" con un solo clic (botón de check verde)
-- Eliminación de facturas individuales
+- Columnas: CFDI (serie+folio), Folio Fiscal (UUID), Fecha Emisión, Cliente, Concepto, Proyecto, Moneda, Tipo de Cambio, Subtotal, IVA, Total, Fecha Tentativa, Estado, Fecha Pago, Comentarios
+- Edición inline por celda: clic directo sobre proyecto, fecha tentativa, estado o comentarios para editar sin botones extra
+- Folio Fiscal visible completo, clic para copiar al portapapeles
+- Marcar como pagado solicita la fecha de pago mediante un modal; opción de revertir el pago para regresar a pendiente
+- Selección múltiple con checkboxes y eliminación masiva de facturas
+- Eliminación individual con modal de confirmación propio (no depende de diálogos del navegador)
 - Ordenamiento ascendente/descendente por cualquier columna sorteable
 - Paginación de 50 facturas por página con navegación numérica
 - Formatos: montos con separador de miles y dos decimales, fechas en dd/mm/yyyy
@@ -83,7 +86,7 @@ Vista general con toggle para ver datos consolidados, solo DLG o solo SMGS:
 
 **Tablas resumen:**
 - Próximas a vencer: lista con folio, cliente, total y fecha de vencimiento
-- Sin fecha de pago: lista con folio, cliente, total y fecha de emisión
+- Sin fecha de pago: lista con folio, cliente, total y opción de asignar fecha tentativa directamente desde el dashboard
 
 ### Exportación a Excel
 - Genera un archivo .xlsx descargable con los datos de la tabla
@@ -166,6 +169,30 @@ Abrir `http://localhost:5173` en desarrollo o `http://localhost:3000` en producc
 > ```
 >
 > O instala Visual Studio Build Tools desde https://visualstudio.microsoft.com/visual-cpp-build-tools/ seleccionando "Desktop development with C++".
+
+## Instalación y ejecución con Docker
+
+```bash
+# Clonar el repositorio
+git clone <url-del-repo>
+cd Facturas_V2.0.2
+
+# Levantar el contenedor
+docker compose up -d --build
+```
+
+Abrir `http://tu-servidor:3000`. La base de datos persiste en un volumen de Docker.
+
+```bash
+# Detener
+docker compose down
+
+# Ver logs
+docker compose logs -f
+
+# Reconstruir después de cambios
+docker compose up -d --build
+```
 
 ## Uso
 
