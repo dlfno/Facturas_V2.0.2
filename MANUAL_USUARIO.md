@@ -6,54 +6,23 @@ Sistema de gestión de cobranza y seguimiento de facturas CFDI para **DLG** y **
 
 ## Tabla de Contenidos
 
-1. [Inicio Rápido](#1-inicio-rápido)
-2. [Navegación](#2-navegación)
-3. [Dashboard](#3-dashboard)
-4. [Carga de Facturas (XML)](#4-carga-de-facturas-xml)
-5. [Tabla de Facturas](#5-tabla-de-facturas)
-6. [Filtros y Búsqueda](#6-filtros-y-búsqueda)
-7. [Edición de Campos](#7-edición-de-campos)
-8. [Flujo de Pagos](#8-flujo-de-pagos)
-9. [Alertas](#9-alertas)
-10. [Alias de Clientes](#10-alias-de-clientes)
-11. [Selección Masiva y Eliminación](#11-selección-masiva-y-eliminación)
-12. [Exportar a Excel](#12-exportar-a-excel)
-13. [Configuración](#13-configuración)
-14. [Atajos de Teclado](#14-atajos-de-teclado)
-15. [Despliegue con Docker](#15-despliegue-con-docker)
+1. [Navegación](#1-navegación)
+2. [Dashboard](#2-dashboard)
+3. [Carga de Facturas (XML)](#3-carga-de-facturas-xml)
+4. [Tabla de Facturas](#4-tabla-de-facturas)
+5. [Filtros y Búsqueda](#5-filtros-y-búsqueda)
+6. [Edición de Campos](#6-edición-de-campos)
+7. [Flujo de Pagos](#7-flujo-de-pagos)
+8. [Alertas y Estados](#8-alertas-y-estados)
+9. [Alias de Clientes](#9-alias-de-clientes)
+10. [Selección Masiva y Eliminación](#10-selección-masiva-y-eliminación)
+11. [Exportar a Excel](#11-exportar-a-excel)
+12. [Configuración](#12-configuración)
+13. [Atajos de Teclado](#13-atajos-de-teclado)
 
 ---
 
-## 1. Inicio Rápido
-
-### Requisitos
-
-- Node.js 18 o superior
-- npm
-
-### Instalación
-
-```bash
-# Instalar dependencias del servidor y cliente
-npm install
-cd client && npm install && cd ..
-
-# Iniciar en modo desarrollo
-npm run dev
-```
-
-El sistema estará disponible en `http://localhost:5173` (desarrollo) o `http://localhost:3000` (producción).
-
-### Primeros pasos
-
-1. Ir a **Configuración** y verificar que los RFCs de emisor estén correctos para DLG y SMGS.
-2. Ir a la página de **DLG** o **SMGS**.
-3. Hacer clic en **Cargar XML** y subir los archivos de facturas.
-4. Las facturas aparecerán en la tabla, listas para gestionar.
-
----
-
-## 2. Navegación
+## 1. Navegación
 
 El sistema cuenta con una **barra lateral izquierda** con las siguientes secciones:
 
@@ -68,7 +37,7 @@ La barra lateral se puede **colapsar** haciendo clic en el botón de menú en la
 
 ---
 
-## 3. Dashboard
+## 2. Dashboard
 
 El Dashboard presenta un resumen ejecutivo de la cobranza. En la parte superior derecha se puede alternar entre tres vistas:
 
@@ -100,7 +69,7 @@ El Dashboard presenta un resumen ejecutivo de la cobranza. En la parte superior 
 
 ---
 
-## 4. Carga de Facturas (XML)
+## 3. Carga de Facturas (XML)
 
 Desde las páginas de **DLG** o **SMGS**, haz clic en el botón **Cargar XML** para abrir la zona de carga.
 
@@ -124,7 +93,7 @@ Desde las páginas de **DLG** o **SMGS**, haz clic en el botón **Cargar XML** p
 
 ---
 
-## 5. Tabla de Facturas
+## 4. Tabla de Facturas
 
 La tabla principal muestra todas las facturas con las siguientes columnas:
 
@@ -149,7 +118,7 @@ La tabla principal muestra todas las facturas con las siguientes columnas:
 
 ### Ordenamiento
 
-Haz clic en el encabezado de cualquier columna que tenga la opción de ordenar (se indica con una flecha) para alternar entre orden ascendente y descendente.
+Haz clic en el encabezado de cualquier columna marcada con flecha para alternar entre orden ascendente y descendente.
 
 ### Paginación
 
@@ -165,7 +134,7 @@ Las filas alternan entre blanco y gris claro para facilitar la lectura.
 
 ---
 
-## 6. Filtros y Búsqueda
+## 5. Filtros y Búsqueda
 
 La barra de filtros se encuentra encima de la tabla de facturas.
 
@@ -195,14 +164,14 @@ Todos los filtros son combinables entre sí. Para restablecer todos los filtros,
 
 ---
 
-## 7. Edición de Campos
+## 6. Edición de Campos
 
 Los siguientes campos se pueden editar directamente haciendo clic sobre ellos en la tabla:
 
 ### Proyecto y Comentarios
 
 1. Haz clic sobre el texto (o donde dice "Vacío") para entrar en modo de edición.
-2. Se abrirá un área de texto donde puedes escribir libremente.
+2. Se abrirá un área de texto donde puedes escribir libremente, incluyendo saltos de línea.
 3. Presiona **Ctrl+Enter** (o **Cmd+Enter** en Mac) para guardar.
 4. Presiona **Escape** para cancelar.
 
@@ -224,17 +193,17 @@ Cuando el texto de **Proyecto** o **Comentarios** es largo y aparece truncado:
 
 1. Haz clic sobre la etiqueta de estado para abrir el selector.
 2. Selecciona el nuevo estado: **Pendiente**, **Pagado** o **Cancelada**.
-3. Si seleccionas **Pagado**, se abrirá el modal de pago (ver [Flujo de Pagos](#8-flujo-de-pagos)).
+3. Si seleccionas **Pagado**, se abrirá el modal de pago (ver [Flujo de Pagos](#7-flujo-de-pagos)).
 
 ---
 
-## 8. Flujo de Pagos
+## 7. Flujo de Pagos
 
 ### Marcar como Pagado
 
 Existen dos formas:
 
-1. **Botón de acción**: Haz clic en el icono verde de palomita (check) en la columna de Acciones.
+1. **Botón de acción**: Haz clic en el icono verde de palomita en la columna de Acciones.
 2. **Cambiar estado**: Haz clic en la etiqueta de estado y selecciona "PAGADO".
 
 En ambos casos se abrirá un modal donde:
@@ -253,23 +222,25 @@ Si una factura fue marcada como pagada por error:
 
 ---
 
-## 9. Alertas
-
-En las páginas de empresa (DLG/SMGS), se muestra un panel de alertas con tres secciones:
+## 8. Alertas y Estados
 
 ### Estados de las facturas
 
-| Estado | Color | Descripción |
-|--------|-------|-------------|
-| **Pagado** | Verde | Factura cobrada |
+El estado de cada factura se calcula automáticamente según sus fechas:
+
+| Estado | Color | Condición |
+|--------|-------|-----------|
+| **Pagado** | Verde | Factura marcada como cobrada |
 | **On Track** | Verde esmeralda | Fecha tentativa a más de 7 días |
 | **Pendiente** | Amarillo | Sin fecha tentativa, creada hace menos de 7 días |
 | **Próximo a Vencer** | Naranja | Fecha tentativa dentro de los próximos 7 días |
 | **Vencido** | Rojo | Fecha tentativa ya pasó y no se ha cobrado |
 | **Sin Fecha** | Rojo oscuro | Sin fecha tentativa, creada hace más de 7 días |
-| **Cancelada** | Gris | Factura cancelada |
+| **Cancelada** | Gris | Factura cancelada manualmente |
 
-### Secciones de alerta
+### Panel de alertas
+
+En las páginas de empresa (DLG/SMGS), se muestra un panel con tres secciones de alerta:
 
 - **Sin Fecha Tentativa**: Facturas que llevan más de 7 días sin fecha tentativa asignada.
 - **Próximas a Vencer**: Facturas que vencen en los próximos 7 días.
@@ -279,7 +250,7 @@ Cada sección se puede expandir o colapsar haciendo clic sobre ella. Muestra el 
 
 ---
 
-## 10. Alias de Clientes
+## 9. Alias de Clientes
 
 Los alias permiten asignar nombres cortos y legibles a los clientes, reemplazando los nombres largos que vienen en el XML.
 
@@ -300,7 +271,7 @@ El alias se aplica automáticamente a **todas las facturas** del mismo RFC recep
 
 ---
 
-## 11. Selección Masiva y Eliminación
+## 10. Selección Masiva y Eliminación
 
 ### Seleccionar facturas
 
@@ -322,7 +293,7 @@ Haz clic en el icono rojo de basura en la columna de **Acciones** de la fila cor
 
 ---
 
-## 12. Exportar a Excel
+## 11. Exportar a Excel
 
 Desde las páginas de empresa (DLG/SMGS):
 
@@ -339,7 +310,7 @@ Desde las páginas de empresa (DLG/SMGS):
 
 ---
 
-## 13. Configuración
+## 12. Configuración
 
 ### RFCs por Empresa
 
@@ -358,45 +329,15 @@ Esta sección permite mapear los RFCs de emisor a cada empresa para que el siste
 
 ### Alias de Clientes
 
-Ver sección [Alias de Clientes](#10-alias-de-clientes).
+Ver sección [Alias de Clientes](#9-alias-de-clientes).
 
 ---
 
-## 14. Atajos de Teclado
+## 13. Atajos de Teclado
 
 | Atajo | Acción | Contexto |
 |-------|--------|----------|
 | **Ctrl+Enter** / **Cmd+Enter** | Guardar cambios | Edición de Proyecto o Comentarios |
-| **Enter** | Guardar cambios | Edición de fecha o campo de configuración |
+| **Enter** | Guardar cambios | Edición de fecha |
 | **Escape** | Cancelar edición | Cualquier campo en edición o modal abierto |
 | **Clic en UUID** | Copiar al portapapeles | Columna Folio Fiscal |
-
----
-
-## 15. Despliegue con Docker
-
-El sistema incluye archivos de configuración para despliegue con Docker.
-
-### Levantar el sistema
-
-```bash
-docker-compose up -d
-```
-
-El sistema estará disponible en `http://localhost:3000`.
-
-### Detener el sistema
-
-```bash
-docker-compose down
-```
-
-### Datos persistentes
-
-La base de datos SQLite se almacena en un volumen de Docker (`cobranza-data`), por lo que los datos se conservan aunque se reinicie o actualice el contenedor.
-
-### Reconstruir después de cambios
-
-```bash
-docker-compose up -d --build
-```
