@@ -4,20 +4,42 @@ const { computeEstadoVisual } = require('./invoices');
 
 const router = express.Router();
 
-// GET /api/dashboard?empresa=DLG (or omit for consolidated)
+// GET /api/dashboard?empresa=DLG&clientes=RFC1|RFC2 (clientes = pipe-separated nombre_receptor)
 router.get('/', (req, res) => {
-  const { empresa } = req.query;
-  const whereEmpresa = empresa ? 'WHERE empresa = ?' : '';
+  const { empresa, clientes: clientesParam } = req.query;
+  const whereEmpresa = empresa ? 'WHERE i.empresa = ?' : '';
   const empresaParams = empresa ? [empresa] : [];
+  const clientesFiltro = clientesParam ? clientesParam.split('|').filter(Boolean) : null;
 
   const today = new Date().toISOString().substring(0, 10);
 
-  // All invoices for status computation
+  // All invoices with alias join (needed for clientesList and KPIs)
   const allInvoices = db
-    .prepare(`SELECT * FROM invoices ${whereEmpresa}`)
+    .prepare(`
+      SELECT i.*, COALESCE(a.alias, i.nombre_receptor) AS nombre_display
+      FROM invoices i
+      LEFT JOIN client_aliases a ON i.rfc_receptor = a.rfc_receptor
+      ${whereEmpresa}
+    `)
     .all(...empresaParams);
 
-  const enriched = allInvoices.map((row) => ({
+  // Build client list (full, unfiltered — for the selector)
+  const clientesMap = new Map();
+  for (const inv of allInvoices) {
+    if (!clientesMap.has(inv.nombre_receptor)) {
+      clientesMap.set(inv.nombre_receptor, inv.nombre_display || inv.nombre_receptor);
+    }
+  }
+  const clientesList = [...clientesMap.entries()]
+    .map(([key, label]) => ({ key, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'es'));
+
+  // Apply cliente filter (if any) before computing KPIs
+  const baseInvoices = clientesFiltro && clientesFiltro.length > 0
+    ? allInvoices.filter((inv) => clientesFiltro.includes(inv.nombre_receptor))
+    : allInvoices;
+
+  const enriched = baseInvoices.map((row) => ({
     ...row,
     estado_visual: computeEstadoVisual(row, today),
   }));
@@ -123,9 +145,12 @@ router.get('/', (req, res) => {
     statusCounts,
     monthlyChart,
     topClientes,
-    proximasVencer: proximasVencer.slice(0, 20),
-    sinFecha: sinFecha.slice(0, 20),
+    proximasVencer,
+    proximasVencerTotal: proximasVencer.length,
+    sinFecha,
+    sinFechaTotal: sinFecha.length,
     vencidas: vencidas.slice(0, 20),
+    clientesList,
   });
 });
 

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import DashboardCards from '../components/DashboardCards';
 import DashboardCharts from '../components/DashboardCharts';
+import ClientSelector from '../components/ClientSelector';
 import { getDashboard, updateInvoice } from '../api';
 
 function formatMoney(n) {
@@ -23,19 +24,33 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [editingFechaId, setEditingFechaId] = useState(null);
   const [fechaValue, setFechaValue] = useState('');
+  const [clientesList, setClientesList] = useState([]);
+  const [selectedClientes, setSelectedClientes] = useState([]);
+  const [sinFechaPage, setSinFechaPage] = useState(1);
+  const [proximasPage, setProximasPage] = useState(1);
 
-  const fetchData = () => {
+  const fetchData = useCallback(() => {
     setLoading(true);
     const empresa = tab === 'consolidado' ? null : tab.toUpperCase();
-    getDashboard(empresa)
-      .then(setData)
+    getDashboard({ empresa, clientes: selectedClientes.length > 0 ? selectedClientes : null })
+      .then((d) => {
+        setData(d);
+        if (d.clientesList) setClientesList(d.clientesList);
+        setSinFechaPage(1);
+        setProximasPage(1);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
-  };
+  }, [tab, selectedClientes]);
 
   useEffect(() => {
     fetchData();
-  }, [tab]);
+  }, [fetchData]);
+
+  const handleTabChange = (t) => {
+    setSelectedClientes([]);
+    setTab(t);
+  };
 
   const saveFecha = async (id) => {
     if (!fechaValue) return;
@@ -51,25 +66,32 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-sm text-gray-500">Vista general de cobranza</p>
         </div>
-        <div className="flex bg-gray-100 rounded-lg p-1">
-          {['consolidado', 'dlg', 'smgs'].map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                tab === t
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {t === 'consolidado' ? 'Consolidado' : t.toUpperCase()}
-            </button>
-          ))}
+        <div className="flex items-center gap-3 flex-wrap">
+          <ClientSelector
+            clientes={clientesList}
+            selected={selectedClientes}
+            onChange={setSelectedClientes}
+          />
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            {['consolidado', 'dlg', 'smgs'].map((t) => (
+              <button
+                key={t}
+                onClick={() => handleTabChange(t)}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  tab === t
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {t === 'consolidado' ? 'Consolidado' : t.toUpperCase()}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -88,119 +110,195 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Proximas a vencer */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 bg-orange-500 rounded-full" />
-                Próximas a Vencer ({data.proximasVencer?.length || 0})
-              </h3>
-              {data.proximasVencer?.length > 0 ? (
-                <div className="overflow-auto max-h-64">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-xs text-gray-500 border-b">
-                        <th className="pb-2">CFDI</th>
-                        <th className="pb-2">Cliente</th>
-                        <th className="pb-2">Total</th>
-                        <th className="pb-2">Vence</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {data.proximasVencer.map((inv) => (
-                        <tr key={inv.id} className="hover:bg-gray-50">
-                          <td className="py-2 font-mono text-xs">
-                            {inv.serie || ''}{inv.folio}
-                          </td>
-                          <td className="py-2 max-w-[200px] truncate">
-                            {inv.nombre_receptor}
-                          </td>
-                          <td className="py-2 font-mono">
-                            ${formatMoney(inv.total)}
-                          </td>
-                          <td className="py-2 text-orange-600 font-medium">
-                            {formatDate(inv.fecha_tentativa_pago)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            {(() => {
+              const PV_PAGE_SIZE = 20;
+              const total = data.proximasVencerTotal ?? data.proximasVencer?.length ?? 0;
+              const pages = Math.ceil(total / PV_PAGE_SIZE);
+              const page = proximasPage;
+              const slice = (data.proximasVencer || []).slice(
+                (page - 1) * PV_PAGE_SIZE,
+                page * PV_PAGE_SIZE
+              );
+              return (
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-orange-500 rounded-full" />
+                    Próximas a Vencer ({total})
+                  </h3>
+                  {total > 0 ? (
+                    <>
+                      <div className="overflow-auto max-h-64">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-xs text-gray-500 border-b">
+                              <th className="pb-2">CFDI</th>
+                              <th className="pb-2">Cliente</th>
+                              <th className="pb-2">Total</th>
+                              <th className="pb-2">Vence</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {slice.map((inv) => (
+                              <tr key={inv.id} className="hover:bg-gray-50">
+                                <td className="py-2 font-mono text-xs">
+                                  {inv.serie || ''}{inv.folio}
+                                </td>
+                                <td className="py-2 max-w-[200px] truncate">
+                                  {inv.nombre_display || inv.nombre_receptor}
+                                </td>
+                                <td className="py-2 font-mono">
+                                  ${formatMoney(inv.total)}
+                                </td>
+                                <td className="py-2 text-orange-600 font-medium">
+                                  {formatDate(inv.fecha_tentativa_pago)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {pages > 1 && (
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                          <p className="text-xs text-gray-500">
+                            {(page - 1) * PV_PAGE_SIZE + 1}–{Math.min(page * PV_PAGE_SIZE, total)} de {total}
+                          </p>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => setProximasPage((p) => p - 1)}
+                              disabled={page <= 1}
+                              className="px-2.5 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-40"
+                            >
+                              Anterior
+                            </button>
+                            <button
+                              onClick={() => setProximasPage((p) => p + 1)}
+                              disabled={page >= pages}
+                              className="px-2.5 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-40"
+                            >
+                              Siguiente
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-gray-400 text-center py-6">
+                      No hay facturas próximas a vencer
+                    </p>
+                  )}
                 </div>
-              ) : (
-                <p className="text-gray-400 text-center py-6">
-                  No hay facturas próximas a vencer
-                </p>
-              )}
-            </div>
+              );
+            })()}
 
             {/* Sin fecha */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 bg-red-500 rounded-full" />
-                Sin Fecha de Pago ({data.sinFecha?.length || 0})
-              </h3>
-              {data.sinFecha?.length > 0 ? (
-                <div className="overflow-auto max-h-80">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-xs text-gray-500 border-b">
-                        <th className="pb-2">CFDI</th>
-                        <th className="pb-2">Cliente</th>
-                        <th className="pb-2">Total</th>
-                        <th className="pb-2">Fecha Tentativa</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {data.sinFecha.map((inv) => (
-                        <tr key={inv.id} className="hover:bg-gray-50">
-                          <td className="py-2 font-mono text-xs">
-                            {inv.serie || ''}{inv.folio}
-                          </td>
-                          <td className="py-2 max-w-[200px] truncate">
-                            {inv.nombre_receptor}
-                          </td>
-                          <td className="py-2 font-mono">
-                            ${formatMoney(inv.total)}
-                          </td>
-                          <td className="py-2">
-                            {editingFechaId === inv.id ? (
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="date"
-                                  value={fechaValue}
-                                  onChange={(e) => setFechaValue(e.target.value)}
-                                  className="border rounded px-1.5 py-0.5 text-xs w-32"
-                                  autoFocus
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveFecha(inv.id);
-                                    if (e.key === 'Escape') setEditingFechaId(null);
-                                  }}
-                                />
-                                <button
-                                  onClick={() => saveFecha(inv.id)}
-                                  className="text-green-600 hover:bg-green-50 rounded p-0.5 text-xs font-medium"
-                                >
-                                  OK
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => { setEditingFechaId(inv.id); setFechaValue(''); }}
-                                className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                              >
-                                Asignar fecha
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            {(() => {
+              const SF_PAGE_SIZE = 20;
+              const total = data.sinFechaTotal ?? data.sinFecha?.length ?? 0;
+              const pages = Math.ceil(total / SF_PAGE_SIZE);
+              const page = sinFechaPage;
+              const slice = (data.sinFecha || []).slice(
+                (page - 1) * SF_PAGE_SIZE,
+                page * SF_PAGE_SIZE
+              );
+              return (
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-red-500 rounded-full" />
+                    Sin Fecha de Pago ({total})
+                  </h3>
+                  {total > 0 ? (
+                    <>
+                      <div className="overflow-auto max-h-80">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-xs text-gray-500 border-b">
+                              <th className="pb-2">CFDI</th>
+                              <th className="pb-2">Cliente</th>
+                              <th className="pb-2">Total</th>
+                              <th className="pb-2">Fecha Tentativa</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {slice.map((inv) => (
+                              <tr key={inv.id} className="hover:bg-gray-50">
+                                <td className="py-2 font-mono text-xs">
+                                  {inv.serie || ''}{inv.folio}
+                                </td>
+                                <td className="py-2 max-w-[200px] truncate">
+                                  {inv.nombre_display || inv.nombre_receptor}
+                                </td>
+                                <td className="py-2 font-mono">
+                                  ${formatMoney(inv.total)}
+                                </td>
+                                <td className="py-2">
+                                  {editingFechaId === inv.id ? (
+                                    <div className="flex items-center gap-1">
+                                      <input
+                                        type="date"
+                                        value={fechaValue}
+                                        onChange={(e) => setFechaValue(e.target.value)}
+                                        className="border rounded px-1.5 py-0.5 text-xs w-32"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') saveFecha(inv.id);
+                                          if (e.key === 'Escape') setEditingFechaId(null);
+                                        }}
+                                      />
+                                      <button
+                                        onClick={() => saveFecha(inv.id)}
+                                        className="text-green-600 hover:bg-green-50 rounded p-0.5 text-xs font-medium"
+                                      >
+                                        OK
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => { setEditingFechaId(inv.id); setFechaValue(''); }}
+                                      className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                    >
+                                      Asignar fecha
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {pages > 1 && (
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                          <p className="text-xs text-gray-500">
+                            {(page - 1) * SF_PAGE_SIZE + 1}–{Math.min(page * SF_PAGE_SIZE, total)} de {total}
+                          </p>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => setSinFechaPage((p) => p - 1)}
+                              disabled={page <= 1}
+                              className="px-2.5 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-40"
+                            >
+                              Anterior
+                            </button>
+                            <button
+                              onClick={() => setSinFechaPage((p) => p + 1)}
+                              disabled={page >= pages}
+                              className="px-2.5 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-40"
+                            >
+                              Siguiente
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-gray-400 text-center py-6">
+                      Todas las facturas tienen fecha tentativa
+                    </p>
+                  )}
                 </div>
-              ) : (
-                <p className="text-gray-400 text-center py-6">
-                  Todas las facturas tienen fecha tentativa
-                </p>
-              )}
-            </div>
+              );
+            })()}
           </div>
         </>
       ) : (

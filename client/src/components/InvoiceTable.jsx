@@ -387,7 +387,7 @@ export default function InvoiceTable({
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-0 z-30">
             <tr className="bg-slate-800 text-white">
               {COLUMNS.map((col) => (
                 <th

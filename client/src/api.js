@@ -56,9 +56,12 @@ export async function uploadFiles(files, empresa) {
   return res.json();
 }
 
-export function getDashboard(empresa) {
-  const query = empresa ? `?empresa=${empresa}` : '';
-  return request(`/dashboard${query}`);
+export function getDashboard({ empresa, clientes } = {}) {
+  const params = {};
+  if (empresa) params.empresa = empresa;
+  if (clientes && clientes.length > 0) params.clientes = clientes.join('|');
+  const query = new URLSearchParams(params).toString();
+  return request(`/dashboard${query ? '?' + query : ''}`);
 }
 
 export function getExportUrl(params) {

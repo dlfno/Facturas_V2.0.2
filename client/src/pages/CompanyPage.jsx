@@ -52,9 +52,10 @@ export default function CompanyPage({ empresa }) {
     fetchData();
   }, [fetchData]);
 
-  useEffect(() => {
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
     setPage(1);
-  }, [filters]);
+  };
 
   const handleSort = (key) => {
     if (sort === key) {
@@ -63,6 +64,7 @@ export default function CompanyPage({ empresa }) {
       setSort(key);
       setOrder('asc');
     }
+    setPage(1);
   };
 
   const exportFilters = {
@@ -101,7 +103,7 @@ export default function CompanyPage({ empresa }) {
 
       <AlertPanel invoices={invoices} />
 
-      <FilterBar filters={filters} onChange={setFilters} clientes={clientes} />
+      <FilterBar filters={filters} onChange={handleFilterChange} clientes={clientes} />
 
       <InvoiceTable
         invoices={invoices}
