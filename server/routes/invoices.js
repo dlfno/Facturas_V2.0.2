@@ -23,46 +23,47 @@ router.get('/', (req, res) => {
     order = 'desc',
   } = req.query;
 
-  const conditions = [];
-  const params = {};
+  // Base conditions: all filters EXCEPT estado (used for both paginated data and alerts)
+  const baseConditions = [];
+  const baseParams = {};
 
   if (empresa) {
-    conditions.push('i.empresa = @empresa');
-    params.empresa = empresa;
+    baseConditions.push('i.empresa = @empresa');
+    baseParams.empresa = empresa;
   }
 
   if (moneda && moneda !== 'Todas') {
-    conditions.push('i.moneda = @moneda');
-    params.moneda = moneda;
+    baseConditions.push('i.moneda = @moneda');
+    baseParams.moneda = moneda;
   }
 
   if (fecha_desde) {
-    conditions.push('i.fecha_emision >= @fecha_desde');
-    params.fecha_desde = fecha_desde;
+    baseConditions.push('i.fecha_emision >= @fecha_desde');
+    baseParams.fecha_desde = fecha_desde;
   }
 
   if (fecha_hasta) {
-    conditions.push('i.fecha_emision <= @fecha_hasta');
-    params.fecha_hasta = fecha_hasta;
+    baseConditions.push('i.fecha_emision <= @fecha_hasta');
+    baseParams.fecha_hasta = fecha_hasta;
   }
 
   if (fecha_tent_desde) {
-    conditions.push('i.fecha_tentativa_pago >= @fecha_tent_desde');
-    params.fecha_tent_desde = fecha_tent_desde;
+    baseConditions.push('i.fecha_tentativa_pago >= @fecha_tent_desde');
+    baseParams.fecha_tent_desde = fecha_tent_desde;
   }
 
   if (fecha_tent_hasta) {
-    conditions.push('i.fecha_tentativa_pago <= @fecha_tent_hasta');
-    params.fecha_tent_hasta = fecha_tent_hasta;
+    baseConditions.push('i.fecha_tentativa_pago <= @fecha_tent_hasta');
+    baseParams.fecha_tent_hasta = fecha_tent_hasta;
   }
 
   if (cliente) {
-    conditions.push('(i.nombre_receptor = @cliente OR i.rfc_receptor IN (SELECT rfc_receptor FROM client_aliases WHERE alias = @cliente))');
-    params.cliente = cliente;
+    baseConditions.push('(i.nombre_receptor = @cliente OR i.rfc_receptor IN (SELECT rfc_receptor FROM client_aliases WHERE alias = @cliente))');
+    baseParams.cliente = cliente;
   }
 
   if (search) {
-    conditions.push(`(
+    baseConditions.push(`(
       i.nombre_receptor LIKE @search OR
       i.rfc_receptor LIKE @search OR
       i.concepto LIKE @search OR
@@ -72,8 +73,14 @@ router.get('/', (req, res) => {
       i.serie LIKE @search OR
       i.rfc_receptor IN (SELECT rfc_receptor FROM client_aliases WHERE alias LIKE @search)
     )`);
-    params.search = `%${search}%`;
+    baseParams.search = `%${search}%`;
   }
+
+  const baseWhere = baseConditions.length > 0 ? 'WHERE ' + baseConditions.join(' AND ') : '';
+
+  // Full conditions for paginated query: add estado filter on top of base
+  const conditions = [...baseConditions];
+  const params = { ...baseParams };
 
   // Estado filtering uses computed status logic
   // We filter in SQL what we can, then compute status in JS
@@ -129,6 +136,32 @@ router.get('/', (req, res) => {
     filtered = enriched.filter((r) => r.estado_visual === estado);
   }
 
+  // Alert rows: all base-filtered invoices excluding PAGADO/CANCELADA (no pagination, no estado filter)
+  const alertWhere = baseConditions.length > 0
+    ? 'WHERE ' + baseConditions.join(' AND ') + " AND i.estado NOT IN ('PAGADO', 'CANCELADA')"
+    : "WHERE i.estado NOT IN ('PAGADO', 'CANCELADA')";
+
+  const alertRows = db
+    .prepare(
+      `SELECT i.*, ca.alias AS cliente_alias FROM invoices i
+       LEFT JOIN client_aliases ca ON ca.rfc_receptor = i.rfc_receptor
+       ${alertWhere}
+       ORDER BY i.fecha_tentativa_pago ASC`
+    )
+    .all(baseParams);
+
+  const alertEnriched = alertRows.map((row) => ({
+    ...row,
+    nombre_display: row.cliente_alias || row.nombre_receptor,
+    estado_visual: computeEstadoVisual(row, today),
+  }));
+
+  const alerts = {
+    sinFecha: alertEnriched.filter((r) => r.estado_visual === 'SIN FECHA'),
+    proxVencer: alertEnriched.filter((r) => r.estado_visual === 'PROXIMO A VENCER'),
+    vencidas: alertEnriched.filter((r) => r.estado_visual === 'VENCIDO'),
+  };
+
   // Get unique clients for this empresa (using alias when available)
   const clientesQuery = empresa
     ? `SELECT DISTINCT COALESCE(ca.alias, i.nombre_receptor) AS nombre
@@ -150,6 +183,7 @@ router.get('/', (req, res) => {
       pages: Math.ceil(countRow.total / parseInt(limit)),
     },
     clientes,
+    alerts,
   });
 });
 

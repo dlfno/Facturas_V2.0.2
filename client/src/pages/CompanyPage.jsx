@@ -11,6 +11,7 @@ export default function CompanyPage({ empresa }) {
   const [invoices, setInvoices] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [pagination, setPagination] = useState(null);
+  const [alerts, setAlerts] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
   const [filters, setFilters] = useState({
     search: '',
@@ -41,6 +42,7 @@ export default function CompanyPage({ empresa }) {
       setInvoices(res.data);
       setPagination(res.pagination);
       setClientes(res.clientes || []);
+      setAlerts(res.alerts || null);
     } catch (err) {
       console.error('Error cargando facturas:', err);
     } finally {
@@ -101,7 +103,7 @@ export default function CompanyPage({ empresa }) {
         <UploadZone empresa={empresa} onUploaded={fetchData} />
       )}
 
-      <AlertPanel invoices={invoices} />
+      <AlertPanel alerts={alerts} />
 
       <FilterBar filters={filters} onChange={handleFilterChange} clientes={clientes} />
 

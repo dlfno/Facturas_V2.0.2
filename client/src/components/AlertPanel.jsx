@@ -48,10 +48,10 @@ function formatMoney(n) {
   return (n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 });
 }
 
-export default function AlertPanel({ invoices = [] }) {
-  const sinFecha = invoices.filter((i) => i.estado_visual === 'SIN FECHA');
-  const proxVencer = invoices.filter((i) => i.estado_visual === 'PROXIMO A VENCER');
-  const vencidas = invoices.filter((i) => i.estado_visual === 'VENCIDO');
+export default function AlertPanel({ alerts }) {
+  const sinFecha = alerts?.sinFecha || [];
+  const proxVencer = alerts?.proxVencer || [];
+  const vencidas = alerts?.vencidas || [];
 
   if (sinFecha.length === 0 && proxVencer.length === 0 && vencidas.length === 0) {
     return null;
