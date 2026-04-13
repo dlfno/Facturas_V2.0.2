@@ -39,11 +39,16 @@ La barra lateral se puede **colapsar** haciendo clic en el botón de menú en la
 
 ## 2. Dashboard
 
-El Dashboard presenta un resumen ejecutivo de la cobranza. En la parte superior derecha se puede alternar entre tres vistas:
+El Dashboard presenta un resumen ejecutivo de la cobranza. En la parte superior derecha se encuentran dos controles:
 
+**Filtro por cliente:** Desplegable que permite seleccionar uno o varios clientes. Al aplicar el filtro, todos los KPIs, gráficas y tablas de alerta se actualizan para mostrar solo los datos de los clientes seleccionados. Para limpiar la selección, haz clic en la **×** del botón o usa "Deseleccionar todos" dentro del desplegable.
+
+**Vista por empresa:**
 - **Consolidado**: Datos de ambas empresas combinados.
 - **DLG**: Solo datos de DLG.
 - **SMGS**: Solo datos de SMGS.
+
+Al cambiar de vista, el filtro de cliente se limpia automáticamente.
 
 ### Indicadores (KPIs)
 
@@ -64,8 +69,10 @@ El Dashboard presenta un resumen ejecutivo de la cobranza. En la parte superior 
 
 ### Tablas de Alerta
 
-- **Próximas a Vencer**: Facturas que vencen dentro de los próximos 7 días.
-- **Sin Fecha de Pago**: Facturas que necesitan asignación de fecha tentativa. Se puede asignar la fecha directamente desde esta tabla haciendo clic en el campo de fecha y presionando el botón **OK**.
+- **Próximas a Vencer**: Facturas que vencen dentro de los próximos 7 días. El contador muestra el total real aunque se pagine.
+- **Sin Fecha de Pago**: Facturas que necesitan asignación de fecha tentativa. El contador muestra el total real. Se puede asignar la fecha directamente desde esta tabla haciendo clic en **Asignar fecha** y presionando el botón **OK**.
+
+Ambas tablas muestran 20 facturas por página. Si hay más, aparecen los botones **Anterior** / **Siguiente** con un indicador de rango (p. ej. "1–20 de 47").
 
 ---
 
@@ -127,6 +134,17 @@ La tabla muestra 50 facturas por página. En la parte inferior se encuentran los
 ### Columna CFDI fija
 
 Al desplazarse horizontalmente, la columna **CFDI** (junto con el checkbox de selección) permanece fija en el lado izquierdo para facilitar la identificación de cada factura.
+
+### Fijar columnas opcionales
+
+Las columnas **Fecha Emisión** y **Cliente** se pueden fijar (pin) al lado de CFDI para mantenerlas visibles al desplazarse horizontalmente.
+
+1. Pasa el cursor sobre el encabezado de **Fecha Emisión** o **Cliente**.
+2. Haz clic en el ícono de pin (📌) que aparece a la derecha del nombre de la columna.
+3. La columna se moverá inmediatamente a la posición contigua a CFDI y permanecerá fija al hacer scroll.
+4. Para desfijar, haz clic nuevamente en el ícono (cambia a PinOff). La tabla regresará al inicio automáticamente.
+
+Se pueden fijar ambas columnas al mismo tiempo. El orden de fijación sigue el orden original (Fecha Emisión antes que Cliente).
 
 ### Filas alternadas
 

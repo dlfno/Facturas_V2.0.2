@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronUp, ChevronDown, ChevronRight, Trash2, Tag, Undo2, Check, X } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronRight, Trash2, Tag, Undo2, Check, X, Pin, PinOff } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import AliasModal from './AliasModal';
 import ConfirmModal from './ConfirmModal';
@@ -20,10 +20,10 @@ function formatDate(d) {
 }
 
 const COLUMNS = [
-  { key: 'folio', label: 'CFDI', sortable: true, width: 'w-28' },
+  { key: 'folio', label: 'CFDI', sortable: true, width: 'w-28', stickyWidth: 7 },
   { key: 'uuid', label: 'Folio Fiscal', sortable: false, width: 'w-72' },
-  { key: 'fecha_emision', label: 'Fecha Emisión', sortable: true, width: 'w-28' },
-  { key: 'nombre_receptor', label: 'Cliente', sortable: true, width: 'w-48' },
+  { key: 'fecha_emision', label: 'Fecha Emisión', sortable: true, width: 'w-28', stickyWidth: 7, pinnable: true },
+  { key: 'nombre_receptor', label: 'Cliente', sortable: true, width: 'w-48', stickyWidth: 12, pinnable: true },
   { key: 'concepto', label: 'Concepto', sortable: false, width: 'w-52' },
   { key: 'proyecto', label: 'Proyecto', sortable: true, width: 'w-32', clickEdit: 'text' },
   { key: 'moneda', label: 'Mon.', sortable: true, width: 'w-14' },
@@ -118,6 +118,12 @@ export default function InvoiceTable({
   const [editingCell, setEditingCell] = useState(null);
   // Expanded text cells
   const [expandedCells, setExpandedCells] = useState(new Set());
+  // Pinned columns
+  const [pinnedCols, setPinnedCols] = useState({ fecha_emision: false, nombre_receptor: false });
+  const tableRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+  const prevPinnedColsRef = useRef({ fecha_emision: false, nombre_receptor: false });
+  const [stickyLefts, setStickyLefts] = useState({});
 
   const allSelected = invoices.length > 0 && selected.size === invoices.length;
 
@@ -225,6 +231,47 @@ export default function InvoiceTable({
   };
 
   const isCellExpanded = (invId, key) => expandedCells.has(`${invId}-${key}`);
+
+  const togglePin = (key) => {
+    const newPinnedCols = { ...pinnedCols, [key]: !pinnedCols[key] };
+
+    // Measure the current DOM (old layout) to pre-compute pixel-accurate left offsets
+    // for the new pinned configuration — avoids any stale-state flash on the first render.
+    const newLefts = {};
+    if (tableRef.current && Object.values(newPinnedCols).some(Boolean)) {
+      const folioTh = tableRef.current.querySelector('th[data-col="folio"]');
+      let left = folioTh ? folioTh.offsetWidth : 112; // folio width in px
+      // Iterate COLUMNS in original order so pinned cols accumulate left correctly
+      for (const col of COLUMNS) {
+        if (!col.pinnable || !newPinnedCols[col.key]) continue;
+        newLefts[col.key] = left;
+        const th = tableRef.current.querySelector(`th[data-col="${col.key}"]`);
+        left += th ? th.offsetWidth : (col.stickyWidth || 0) * 16;
+      }
+    }
+
+    setPinnedCols(newPinnedCols);
+    setStickyLefts(newLefts);
+  };
+
+  const orderedColumns = (() => {
+    const folio = COLUMNS[0];
+    const pinned = COLUMNS.filter((c) => c.pinnable && pinnedCols[c.key]);
+    const rest = COLUMNS.slice(1).filter((c) => !c.pinnable || !pinnedCols[c.key]);
+    return [folio, ...pinned, ...rest];
+  })();
+
+
+  // Scroll back to start when a column is unpinned so it doesn't "disappear" behind the scroll position
+  useEffect(() => {
+    const justUnpinned = Object.keys(pinnedCols).some(
+      (key) => prevPinnedColsRef.current[key] && !pinnedCols[key]
+    );
+    if (justUnpinned && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = 0;
+    }
+    prevPinnedColsRef.current = { ...pinnedCols };
+  }, [pinnedCols]);
 
   const renderCell = (inv, col) => {
     // Click-to-edit cells
@@ -385,35 +432,61 @@ export default function InvoiceTable({
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+      <div ref={scrollContainerRef} className="overflow-x-auto">
+        <table ref={tableRef} className="w-full text-sm">
           <thead className="sticky top-0 z-30">
             <tr className="bg-slate-800 text-white">
-              {COLUMNS.map((col) => (
-                <th
-                  key={col.key}
-                  className={`px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider ${col.width} ${
-                    col.sortable ? 'cursor-pointer select-none hover:bg-slate-700' : ''
-                  }${col.key === 'folio' ? ' sticky left-0 z-20 bg-slate-800 border-r border-slate-600' : ''}`}
-                  onClick={() => col.sortable && onSort?.(col.key)}
-                >
-                  <div className="flex items-center gap-1">
-                    {col.key === 'folio' && (
-                      <input
-                        type="checkbox"
-                        checked={allSelected}
-                        onChange={toggleAll}
-                        onClick={(e) => e.stopPropagation()}
-                        className="rounded border-gray-300 cursor-pointer"
-                      />
-                    )}
-                    {col.label}
-                    {col.sortable && sort === col.key && (
-                      order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
-                    )}
-                  </div>
-                </th>
-              ))}
+              {orderedColumns.map((col) => {
+                const isPinned = col.pinnable && pinnedCols[col.key];
+                const isStickyCol = col.key === 'folio' || isPinned;
+                const stickyStyle = isStickyCol && col.key !== 'folio'
+                  ? { left: (stickyLefts[col.key] ?? 0) + 'px' }
+                  : undefined;
+                return (
+                  <th
+                    key={col.key}
+                    data-col={col.key}
+                    style={stickyStyle}
+                    className={`px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider ${col.width} ${
+                      col.sortable ? 'cursor-pointer select-none hover:bg-slate-700' : ''
+                    }${
+                      isStickyCol
+                        ? col.key === 'folio'
+                          ? ' sticky left-0 z-20 bg-slate-800 border-r border-slate-600'
+                          : ' sticky z-20 bg-slate-800 border-r border-slate-600'
+                        : ''
+                    }`}
+                    onClick={() => col.sortable && onSort?.(col.key)}
+                  >
+                    <div className="flex items-center gap-1">
+                      {col.key === 'folio' && (
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={toggleAll}
+                          onClick={(e) => e.stopPropagation()}
+                          className="rounded border-gray-300 cursor-pointer"
+                        />
+                      )}
+                      {col.label}
+                      {col.sortable && sort === col.key && (
+                        order === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                      )}
+                      {col.pinnable && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); togglePin(col.key); }}
+                          className={`ml-auto p-0.5 rounded hover:bg-slate-600 ${
+                            pinnedCols[col.key] ? 'text-blue-300' : 'text-slate-500 hover:text-slate-300'
+                          }`}
+                          title={pinnedCols[col.key] ? 'Desfijar columna' : 'Fijar columna junto a CFDI'}
+                        >
+                          {pinnedCols[col.key] ? <PinOff size={11} /> : <Pin size={11} />}
+                        </button>
+                      )}
+                    </div>
+                  </th>
+                );
+              })}
               <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider w-20">
                 Acciones
               </th>
@@ -431,14 +504,22 @@ export default function InvoiceTable({
                   id={`invoice-${inv.id}`}
                   className={`group hover:bg-gray-200/60 ${rowBg}`}
                 >
-                  {COLUMNS.map((col) => {
+                  {orderedColumns.map((col) => {
                     const textCellOpen = col.clickEdit === 'text' && (isCellExpanded(inv.id, col.key) || isEditing(inv.id, col.key));
+                    const isPinned = col.pinnable && pinnedCols[col.key];
+                    const isStickyCol = col.key === 'folio' || isPinned;
+                    const stickyStyle = isStickyCol && col.key !== 'folio'
+                      ? { left: (stickyLefts[col.key] ?? 0) + 'px' }
+                      : undefined;
                     return (
                     <td
                       key={col.key}
+                      style={stickyStyle}
                       className={`px-3 py-2.5${textCellOpen ? '' : ' whitespace-nowrap'}${
-                        col.key === 'folio'
-                          ? ` sticky left-0 z-10 ${stickyBg} group-hover:bg-gray-200 border-r border-gray-200`
+                        isStickyCol
+                          ? col.key === 'folio'
+                            ? ` sticky left-0 z-10 ${stickyBg} group-hover:bg-gray-200 border-r border-gray-200`
+                            : ` sticky z-10 ${stickyBg} group-hover:bg-gray-200 border-r border-gray-200`
                           : ''
                       }`}
                     >
