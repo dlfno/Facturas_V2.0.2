@@ -78,24 +78,28 @@ router.get('/', (req, res) => {
 
   const baseWhere = baseConditions.length > 0 ? 'WHERE ' + baseConditions.join(' AND ') : '';
 
-  // Full conditions for paginated query: add estado filter on top of base
-  const conditions = [...baseConditions];
+  // SQL expression that mirrors computeEstadoVisual logic
+  const estadoSqlExpr = `
+    CASE
+      WHEN i.estado = 'CANCELADA' THEN 'CANCELADA'
+      WHEN i.estado = 'PAGADO' THEN 'PAGADO'
+      WHEN i.fecha_tentativa_pago IS NULL AND
+           CAST(julianday(date('now')) - julianday(date(COALESCE(i.created_at, i.fecha_emision))) AS INTEGER) >= 7
+           THEN 'SIN FECHA'
+      WHEN i.fecha_tentativa_pago IS NULL THEN 'PENDIENTE'
+      WHEN date(i.fecha_tentativa_pago) < date('now') THEN 'VENCIDO'
+      WHEN CAST(julianday(date(i.fecha_tentativa_pago)) - julianday(date('now')) AS INTEGER) <= 7 THEN 'PROXIMO A VENCER'
+      ELSE 'ON TRACK'
+    END`;
+
+  // Build params and estado filter for CTE outer query
   const params = { ...baseParams };
-
-  // Estado filtering uses computed status logic
-  // We filter in SQL what we can, then compute status in JS
+  const estadoWhere = (estado && estado !== 'TODOS')
+    ? 'WHERE estado_visual = @estado_filter'
+    : '';
   if (estado && estado !== 'TODOS') {
-    // For DB-stored states
-    const dbStates = ['PAGADO', 'CANCELADA'];
-    if (dbStates.includes(estado)) {
-      conditions.push('i.estado = @estado');
-      params.estado = estado;
-    }
-    // Computed states handled post-query
+    params.estado_filter = estado;
   }
-
-  const whereClause =
-    conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
   // Validate sort column
   const allowedSorts = [
@@ -105,38 +109,41 @@ router.get('/', (req, res) => {
   const sortCol = allowedSorts.includes(sort) ? sort : 'fecha_emision';
   const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
 
-  // Get total count
-  const countRow = db
-    .prepare(`SELECT COUNT(*) as total FROM invoices i ${whereClause}`)
-    .get(params);
+  // Count using CTE so estado filter is applied before counting
+  const countRow = db.prepare(`
+    WITH base AS (
+      SELECT (${estadoSqlExpr}) AS estado_visual
+      FROM invoices i
+      ${baseWhere}
+    )
+    SELECT COUNT(*) as total FROM base
+    ${estadoWhere}
+  `).get(params);
 
   const offset = (parseInt(page) - 1) * parseInt(limit);
 
-  const rows = db
-    .prepare(
-      `SELECT i.*, ca.alias AS cliente_alias FROM invoices i
-       LEFT JOIN client_aliases ca ON ca.rfc_receptor = i.rfc_receptor
-       ${whereClause}
-       ORDER BY i.${sortCol} ${sortOrder}
-       LIMIT @limit OFFSET @offset`
+  // Paginated data using CTE with estado_visual computed in SQL
+  const rows = db.prepare(`
+    WITH base AS (
+      SELECT i.*, ca.alias AS cliente_alias,
+        (${estadoSqlExpr}) AS estado_visual
+      FROM invoices i
+      LEFT JOIN client_aliases ca ON ca.rfc_receptor = i.rfc_receptor
+      ${baseWhere}
     )
-    .all({ ...params, limit: parseInt(limit), offset });
+    SELECT * FROM base
+    ${estadoWhere}
+    ORDER BY ${sortCol} ${sortOrder}
+    LIMIT @limit OFFSET @offset
+  `).all({ ...params, limit: parseInt(limit), offset });
 
-  // Compute visual status and resolve display name for each row
-  const today = new Date().toISOString().substring(0, 10);
   const enriched = rows.map((row) => ({
     ...row,
     nombre_display: row.cliente_alias || row.nombre_receptor,
-    estado_visual: computeEstadoVisual(row, today),
   }));
 
-  // If filtering by computed status, apply post-filter
-  let filtered = enriched;
-  if (estado && !['TODOS', 'PAGADO', 'CANCELADA'].includes(estado)) {
-    filtered = enriched.filter((r) => r.estado_visual === estado);
-  }
-
   // Alert rows: all base-filtered invoices excluding PAGADO/CANCELADA (no pagination, no estado filter)
+  const today = new Date().toISOString().substring(0, 10);
   const alertWhere = baseConditions.length > 0
     ? 'WHERE ' + baseConditions.join(' AND ') + " AND i.estado NOT IN ('PAGADO', 'CANCELADA')"
     : "WHERE i.estado NOT IN ('PAGADO', 'CANCELADA')";
@@ -175,7 +182,7 @@ router.get('/', (req, res) => {
     : db.prepare(clientesQuery).all().map((r) => r.nombre);
 
   res.json({
-    data: filtered,
+    data: enriched,
     pagination: {
       page: parseInt(page),
       limit: parseInt(limit),
