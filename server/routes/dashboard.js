@@ -131,9 +131,14 @@ router.get('/', (req, res) => {
   const proximasVencer = rows
     .filter((i) => i.estado_visual === 'PROXIMO A VENCER')
     .sort((a, b) => (a.fecha_tentativa_pago || '').localeCompare(b.fecha_tentativa_pago || ''));
-  const sinFecha = rows
-    .filter((i) => i.estado_visual === 'REVISIÓN' || (i.estado_visual === 'PENDIENTE' && !i.fecha_tentativa_pago))
+  const revision = rows
+    .filter((i) => i.estado_visual === 'REVISIÓN')
     .sort((a, b) => (a.fecha_emision || '').localeCompare(b.fecha_emision || ''));
+  const pendientesEstado = rows
+    .filter((i) => i.estado_visual === 'PENDIENTE')
+    .sort((a, b) => (a.fecha_emision || '').localeCompare(b.fecha_emision || ''));
+  // Legacy: sinFecha combinaba REVISIÓN + PENDIENTE sin fecha tentativa.
+  const sinFecha = revision;
   const vencidas = rows
     .filter((i) => i.estado_visual === 'VENCIDO')
     .sort((a, b) => (a.fecha_tentativa_pago || '').localeCompare(b.fecha_tentativa_pago || ''));
@@ -162,6 +167,10 @@ router.get('/', (req, res) => {
     topClientesGrandTotalSinIVA,
     proximasVencer,
     proximasVencerTotal: proximasVencer.length,
+    revision,
+    revisionTotal: revision.length,
+    pendientes: pendientesEstado,
+    pendientesTotal: pendientesEstado.length,
     sinFecha,
     sinFechaTotal: sinFecha.length,
     vencidas: vencidas.slice(0, 20),

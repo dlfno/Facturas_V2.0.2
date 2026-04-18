@@ -129,17 +129,40 @@ export default function InvoiceTable({
   const [stickyLefts, setStickyLefts] = useState({});
 
   // Scroll + highlight cuando se pide localizar una factura específica.
+  // Reintenta con requestAnimationFrame hasta que el elemento exista en DOM
+  // (la data nueva puede llegar uno o dos frames después del setLocateId).
   useEffect(() => {
     if (!locateInvoiceId) return;
-    const el = document.getElementById(`invoice-${locateInvoiceId}`);
-    if (!el) return; // aún no llegó la data correcta; el siguiente render probará otra vez
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    el.classList.add('highlight-row');
-    const t = setTimeout(() => {
-      el.classList.remove('highlight-row');
-      onLocateDone?.();
-    }, 2500);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    let cleanup = () => {};
+    let frames = 0;
+    const maxFrames = 30;
+
+    const tryLocate = () => {
+      if (cancelled) return;
+      const el = document.getElementById(`invoice-${locateInvoiceId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('highlight-row');
+        const t = setTimeout(() => {
+          el.classList.remove('highlight-row');
+          onLocateDone?.();
+        }, 4000);
+        cleanup = () => clearTimeout(t);
+        return;
+      }
+      if (frames++ < maxFrames) {
+        requestAnimationFrame(tryLocate);
+      } else {
+        onLocateDone?.();
+      }
+    };
+
+    requestAnimationFrame(tryLocate);
+    return () => {
+      cancelled = true;
+      cleanup();
+    };
   }, [locateInvoiceId, invoices, onLocateDone]);
 
   const allSelected = invoices.length > 0 && selected.size === invoices.length;

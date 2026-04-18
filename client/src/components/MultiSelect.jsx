@@ -12,6 +12,7 @@ export default function MultiSelect({
   itemLabelPlural = 'elementos',
   searchable = false,
   width = 'w-60',
+  align = 'right',
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -73,7 +74,7 @@ export default function MultiSelect({
       </button>
 
       {open && (
-        <div className={`absolute right-0 top-full mt-1 ${width} bg-white border border-gray-200 rounded-xl shadow-xl z-50`}>
+        <div className={`absolute ${align === 'left' ? 'left-0' : 'right-0'} top-full mt-1 ${width} bg-white border border-gray-200 rounded-xl shadow-xl z-50`}>
           {searchable && (
             <div className="p-2 border-b border-gray-100">
               <div className="relative">

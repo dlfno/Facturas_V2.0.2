@@ -175,12 +175,6 @@ export default function DashboardCharts({ statusCounts, monthlyChart, topCliente
                     <span className="text-xs text-gray-600">{formatMoney(topClientesTotalSinIVA)}</span>
                   </div>
                 )}
-                {topClientesGrandTotal !== undefined && topClientesGrandTotal > topClientesTotal && (
-                  <div className="flex items-baseline justify-between pt-1 border-t border-gray-50">
-                    <span className="text-[11px] text-gray-400">Total pendiente todos los clientes</span>
-                    <span className="text-xs text-gray-500">{formatMoney(topClientesGrandTotal)}</span>
-                  </div>
-                )}
               </div>
             )}
           </>

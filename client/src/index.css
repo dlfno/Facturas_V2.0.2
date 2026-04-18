@@ -9,11 +9,11 @@
 }
 
 @keyframes highlightPulse {
-  0% { background-color: rgb(254 249 195); }
-  50% { background-color: rgb(253 230 138); }
-  100% { background-color: transparent; }
+  0%   { background-color: rgb(252 211 77); box-shadow: inset 0 0 0 2px rgb(217 119 6); }
+  30%  { background-color: rgb(252 211 77); box-shadow: inset 0 0 0 2px rgb(217 119 6); }
+  100% { background-color: transparent;     box-shadow: inset 0 0 0 0 transparent; }
 }
 
 .highlight-row > td {
-  animation: highlightPulse 2.5s ease-in-out;
+  animation: highlightPulse 4s ease-in-out;
 }

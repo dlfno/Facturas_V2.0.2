@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [sinFechaPage, setSinFechaPage] = useState(1);
   const [proximasPage, setProximasPage] = useState(1);
+  const [pendientesPage, setPendientesPage] = useState(1);
 
   const empresa = tab === 'consolidado' ? null : tab.toUpperCase();
 
@@ -57,6 +58,7 @@ export default function DashboardPage() {
         if (d.clientesList) setClientesList(d.clientesList);
         setSinFechaPage(1);
         setProximasPage(1);
+        setPendientesPage(1);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -147,7 +149,8 @@ export default function DashboardPage() {
             topClientesGrandTotalSinIVA={data.topClientesGrandTotalSinIVA}
           />
 
-          {/* Proximas a vencer — full width */}
+          {/* Grid superior: Próximas a Vencer | Pendientes */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {(() => {
               const PV_PAGE_SIZE = 20;
               const total = data.proximasVencerTotal ?? data.proximasVencer?.length ?? 0;
@@ -229,17 +232,100 @@ export default function DashboardPage() {
               );
             })()}
 
+            {/* Pendientes */}
+            {(() => {
+              const PND_PAGE_SIZE = 20;
+              const total = data.pendientesTotal ?? data.pendientes?.length ?? 0;
+              const pages = Math.ceil(total / PND_PAGE_SIZE);
+              const page = pendientesPage;
+              const slice = (data.pendientes || []).slice(
+                (page - 1) * PND_PAGE_SIZE,
+                page * PND_PAGE_SIZE
+              );
+              return (
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-yellow-500 rounded-full" />
+                    Pendientes ({total})
+                  </h3>
+                  {total > 0 ? (
+                    <>
+                      <div className="overflow-auto max-h-64">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-xs text-gray-500 border-b">
+                              <th className="pb-2">CFDI</th>
+                              <th className="pb-2">Cliente</th>
+                              <th className="pb-2">Total</th>
+                              <th className="pb-2">Emisión</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {slice.map((inv) => (
+                              <tr key={inv.id} className="hover:bg-gray-50">
+                                <td className="py-2 font-mono text-xs">
+                                  {inv.serie || ''}{inv.folio}
+                                </td>
+                                <td className="py-2 max-w-[200px] truncate">
+                                  {inv.nombre_display || inv.nombre_receptor}
+                                </td>
+                                <td className="py-2 font-mono">
+                                  ${formatMoney(inv.total)}
+                                </td>
+                                <td className="py-2 text-gray-600">
+                                  {formatDate(inv.fecha_emision)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {pages > 1 && (
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                          <p className="text-xs text-gray-500">
+                            {(page - 1) * PND_PAGE_SIZE + 1}–{Math.min(page * PND_PAGE_SIZE, total)} de {total}
+                          </p>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => setPendientesPage((p) => p - 1)}
+                              disabled={page <= 1}
+                              className="px-2.5 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-40"
+                            >
+                              Anterior
+                            </button>
+                            <button
+                              onClick={() => setPendientesPage((p) => p + 1)}
+                              disabled={page >= pages}
+                              className="px-2.5 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-40"
+                            >
+                              Siguiente
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-gray-400 text-center py-6">
+                      No hay facturas pendientes
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
           {/* Grid inferior: Rezagadas | Facturas en Revisión */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <RezagadasPanel empresa={empresa} />
 
-            {/* Facturas en Revisión — antes "Sin Fecha de Pago" */}
+            {/* Facturas en Revisión */}
             {(() => {
               const SF_PAGE_SIZE = 20;
-              const total = data.sinFechaTotal ?? data.sinFecha?.length ?? 0;
+              const total = data.revisionTotal ?? data.revision?.length ?? 0;
               const pages = Math.ceil(total / SF_PAGE_SIZE);
               const page = sinFechaPage;
-              const slice = (data.sinFecha || []).slice(
+              const slice = (data.revision || []).slice(
                 (page - 1) * SF_PAGE_SIZE,
                 page * SF_PAGE_SIZE
               );

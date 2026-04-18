@@ -88,6 +88,7 @@ export default function FilterBar({ filters, onChange, clientes = [], hideClient
             allLabel="Todos los estados"
             itemLabelSingular="estado"
             itemLabelPlural="estados"
+            align="left"
           />
         </div>
 
