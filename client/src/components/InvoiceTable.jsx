@@ -108,6 +108,8 @@ export default function InvoiceTable({
   pagination,
   onPageChange,
   onLimitChange,
+  locateInvoiceId,
+  onLocateDone,
 }) {
   const [aliasInvoice, setAliasInvoice] = useState(null);
   const [selected, setSelected] = useState(new Set());
@@ -125,6 +127,20 @@ export default function InvoiceTable({
   const scrollContainerRef = useRef(null);
   const prevPinnedColsRef = useRef({ fecha_emision: false, nombre_receptor: false });
   const [stickyLefts, setStickyLefts] = useState({});
+
+  // Scroll + highlight cuando se pide localizar una factura específica.
+  useEffect(() => {
+    if (!locateInvoiceId) return;
+    const el = document.getElementById(`invoice-${locateInvoiceId}`);
+    if (!el) return; // aún no llegó la data correcta; el siguiente render probará otra vez
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('highlight-row');
+    const t = setTimeout(() => {
+      el.classList.remove('highlight-row');
+      onLocateDone?.();
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [locateInvoiceId, invoices, onLocateDone]);
 
   const allSelected = invoices.length > 0 && selected.size === invoices.length;
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Eye } from 'lucide-react';
 import DashboardCards from '../components/DashboardCards';
 import DashboardCharts from '../components/DashboardCharts';
 import ClientSelector from '../components/ClientSelector';
@@ -22,7 +23,6 @@ function formatDate(d) {
 }
 
 const EMPTY_FILTERS = {
-  search: '',
   estado: [],
   moneda: 'Todas',
   fecha_desde: '',
@@ -119,7 +119,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <FilterBar filters={filters} onChange={setFilters} hideCliente />
+      <FilterBar filters={filters} onChange={setFilters} hideCliente hideSearch />
 
       <ActiveFilterChips
         filters={filters}
@@ -142,12 +142,13 @@ export default function DashboardPage() {
             monthlyChart={data.monthlyChart}
             topClientes={data.topClientes}
             topClientesTotal={data.topClientesTotal}
+            topClientesTotalSinIVA={data.topClientesTotalSinIVA}
             topClientesGrandTotal={data.topClientesGrandTotal}
+            topClientesGrandTotalSinIVA={data.topClientesGrandTotalSinIVA}
           />
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Proximas a vencer */}
-            {(() => {
+          {/* Proximas a vencer — full width */}
+          {(() => {
               const PV_PAGE_SIZE = 20;
               const total = data.proximasVencerTotal ?? data.proximasVencer?.length ?? 0;
               const pages = Math.ceil(total / PV_PAGE_SIZE);
@@ -228,7 +229,11 @@ export default function DashboardPage() {
               );
             })()}
 
-            {/* Sin fecha */}
+          {/* Grid inferior: Rezagadas | Facturas en Revisión */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <RezagadasPanel empresa={empresa} />
+
+            {/* Facturas en Revisión — antes "Sin Fecha de Pago" */}
             {(() => {
               const SF_PAGE_SIZE = 20;
               const total = data.sinFechaTotal ?? data.sinFecha?.length ?? 0;
@@ -240,10 +245,18 @@ export default function DashboardPage() {
               );
               return (
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-red-500 rounded-full" />
-                    Sin Fecha de Pago ({total})
+                  <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <Eye size={16} className="text-red-600" />
+                    Facturas en Revisión
+                    {total > 0 && (
+                      <span className="ml-1 px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-full font-medium">
+                        {total}
+                      </span>
+                    )}
                   </h3>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Facturas emitidas hace 7 días o más sin fecha tentativa asignada. Asigna una fecha desde aquí.
+                  </p>
                   {total > 0 ? (
                     <>
                       <div className="overflow-auto max-h-80">
@@ -330,15 +343,13 @@ export default function DashboardPage() {
                     </>
                   ) : (
                     <p className="text-gray-400 text-center py-6">
-                      Todas las facturas tienen fecha tentativa
+                      No hay facturas en revisión
                     </p>
                   )}
                 </div>
               );
             })()}
           </div>
-
-          <RezagadasPanel empresa={empresa} />
         </>
       ) : (
         <p className="text-gray-400 text-center py-20">No hay datos disponibles</p>

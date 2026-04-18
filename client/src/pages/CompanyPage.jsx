@@ -4,7 +4,18 @@ import FilterBar from '../components/FilterBar';
 import AlertPanel from '../components/AlertPanel';
 import InvoiceTable from '../components/InvoiceTable';
 import ExportButton from '../components/ExportButton';
-import { getInvoices } from '../api';
+import { getInvoices, locateInvoice } from '../api';
+
+const EMPTY_FILTERS = {
+  search: '',
+  estado: [],
+  moneda: 'Todas',
+  fecha_desde: '',
+  fecha_hasta: '',
+  fecha_tent_desde: '',
+  fecha_tent_hasta: '',
+  cliente: '',
+};
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function CompanyPage({ empresa }) {
@@ -13,21 +24,25 @@ export default function CompanyPage({ empresa }) {
   const [pagination, setPagination] = useState(null);
   const [alerts, setAlerts] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
-  const [filters, setFilters] = useState({
-    search: '',
-    estado: [],
-    moneda: 'Todas',
-    fecha_desde: '',
-    fecha_hasta: '',
-    fecha_tent_desde: '',
-    fecha_tent_hasta: '',
-    cliente: '',
-  });
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [sort, setSort] = useState('fecha_emision');
   const [order, setOrder] = useState('desc');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
   const [loading, setLoading] = useState(false);
+  const [locateId, setLocateId] = useState(null);
+
+  const handleLocateInvoice = async (id) => {
+    try {
+      const { found, page: targetPage } = await locateInvoice({ empresa, id, sort, order, limit });
+      if (!found) return;
+      setFilters(EMPTY_FILTERS); // limpiar para garantizar que la factura sea visible
+      setPage(targetPage);
+      setLocateId(id);
+    } catch (err) {
+      console.error('Error localizando factura:', err);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -110,7 +125,7 @@ export default function CompanyPage({ empresa }) {
         <UploadZone empresa={empresa} onUploaded={fetchData} />
       )}
 
-      <AlertPanel alerts={alerts} />
+      <AlertPanel alerts={alerts} onClickItem={handleLocateInvoice} />
 
       <FilterBar filters={filters} onChange={handleFilterChange} clientes={clientes} />
 
@@ -123,6 +138,8 @@ export default function CompanyPage({ empresa }) {
         pagination={pagination}
         onPageChange={setPage}
         onLimitChange={handleLimitChange}
+        locateInvoiceId={locateId}
+        onLocateDone={() => setLocateId(null)}
       />
     </div>
   );

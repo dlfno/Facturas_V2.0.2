@@ -41,7 +41,7 @@ function formatMoney(n) {
   })}`;
 }
 
-export default function DashboardCharts({ statusCounts, monthlyChart, topClientes, topClientesTotal, topClientesGrandTotal }) {
+export default function DashboardCharts({ statusCounts, monthlyChart, topClientes, topClientesTotal, topClientesTotalSinIVA, topClientesGrandTotal, topClientesGrandTotalSinIVA }) {
   // Pie chart data
   const pieData = Object.entries(statusCounts || {}).map(([name, value]) => ({
     name,
@@ -164,15 +164,23 @@ export default function DashboardCharts({ statusCounts, monthlyChart, topCliente
               </BarChart>
             </ResponsiveContainer>
             {topClientesTotal !== undefined && (
-              <div className="mt-3 pt-3 border-t border-gray-100 flex items-baseline justify-between">
-                <span className="text-xs text-gray-500">Total top 10</span>
-                <span className="text-sm font-semibold text-gray-800">{formatMoney(topClientesTotal)}</span>
-              </div>
-            )}
-            {topClientesGrandTotal !== undefined && topClientesGrandTotal > topClientesTotal && (
-              <div className="flex items-baseline justify-between mt-1">
-                <span className="text-[11px] text-gray-400">Total pendiente (todos los clientes)</span>
-                <span className="text-xs text-gray-500">{formatMoney(topClientesGrandTotal)}</span>
+              <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs text-gray-500">Total top 10 (con IVA)</span>
+                  <span className="text-sm font-semibold text-gray-800">{formatMoney(topClientesTotal)}</span>
+                </div>
+                {topClientesTotalSinIVA !== undefined && (
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[11px] text-gray-400">Total top 10 (sin IVA)</span>
+                    <span className="text-xs text-gray-600">{formatMoney(topClientesTotalSinIVA)}</span>
+                  </div>
+                )}
+                {topClientesGrandTotal !== undefined && topClientesGrandTotal > topClientesTotal && (
+                  <div className="flex items-baseline justify-between pt-1 border-t border-gray-50">
+                    <span className="text-[11px] text-gray-400">Total pendiente todos los clientes</span>
+                    <span className="text-xs text-gray-500">{formatMoney(topClientesGrandTotal)}</span>
+                  </div>
+                )}
               </div>
             )}
           </>

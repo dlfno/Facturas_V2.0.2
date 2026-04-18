@@ -38,6 +38,15 @@ export function getInvoices(params) {
   return request(`/invoices?${query}`);
 }
 
+export function locateInvoice({ empresa, id, sort = 'fecha_emision', order = 'desc', limit = 50 }) {
+  const params = new URLSearchParams();
+  if (empresa) params.set('empresa', empresa);
+  params.set('sort', sort);
+  params.set('order', order);
+  params.set('limit', String(limit));
+  return request(`/invoices/${id}/locate?${params}`);
+}
+
 export function updateInvoice(id, data) {
   return request(`/invoices/${id}`, {
     method: 'PATCH',

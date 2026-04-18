@@ -12,7 +12,7 @@ const ESTADOS = [
 ];
 const ESTADOS_ITEMS = ESTADOS.map((e) => ({ key: e, label: e }));
 
-export default function FilterBar({ filters, onChange, clientes = [], hideCliente = false }) {
+export default function FilterBar({ filters, onChange, clientes = [], hideCliente = false, hideSearch = false }) {
   const update = (key, value) => {
     onChange({ ...filters, [key]: value });
   };
@@ -42,27 +42,41 @@ export default function FilterBar({ filters, onChange, clientes = [], hideClient
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar por cliente, RFC, folio fiscal, concepto, proyecto..."
-            value={filters.search || ''}
-            onChange={(e) => update('search', e.target.value)}
-            className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+      {!hideSearch ? (
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar por cliente, RFC, folio fiscal, concepto, proyecto..."
+              value={filters.search || ''}
+              onChange={(e) => update('search', e.target.value)}
+              className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          {hasFilters && (
+            <button
+              onClick={clear}
+              className="flex items-center gap-1 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border rounded-lg hover:bg-gray-50"
+            >
+              <X size={14} />
+              Limpiar
+            </button>
+          )}
         </div>
-        {hasFilters && (
-          <button
-            onClick={clear}
-            className="flex items-center gap-1 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border rounded-lg hover:bg-gray-50"
-          >
-            <X size={14} />
-            Limpiar
-          </button>
-        )}
-      </div>
+      ) : (
+        hasFilters && (
+          <div className="flex justify-end">
+            <button
+              onClick={clear}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 border rounded-lg hover:bg-gray-50"
+            >
+              <X size={14} />
+              Limpiar
+            </button>
+          </div>
+        )
+      )}
 
       <div className="flex flex-wrap gap-3">
         <div>

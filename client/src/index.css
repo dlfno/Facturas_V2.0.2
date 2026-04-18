@@ -7,3 +7,13 @@
     @apply antialiased;
   }
 }
+
+@keyframes highlightPulse {
+  0% { background-color: rgb(254 249 195); }
+  50% { background-color: rgb(253 230 138); }
+  100% { background-color: transparent; }
+}
+
+.highlight-row > td {
+  animation: highlightPulse 2.5s ease-in-out;
+}

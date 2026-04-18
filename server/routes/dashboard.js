@@ -106,18 +106,26 @@ router.get('/', (req, res) => {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([mes, monto]) => ({ mes, monto: round2(monto) }));
 
-  // Top 10 clientes por monto pendiente.
-  const clientePendiente = {};
+  // Top 10 clientes por monto pendiente (con IVA para el ranking).
+  const clientePendienteConIVA = {};
+  const clientePendienteSinIVA = {};
   for (const inv of pendientes) {
     const name = inv.nombre_receptor;
-    clientePendiente[name] = (clientePendiente[name] || 0) + toMXN(inv.total, inv);
+    clientePendienteConIVA[name] = (clientePendienteConIVA[name] || 0) + toMXN(inv.total, inv);
+    clientePendienteSinIVA[name] = (clientePendienteSinIVA[name] || 0) + toMXN(inv.subtotal, inv);
   }
-  const topClientesFull = Object.entries(clientePendiente)
+  const topClientesFull = Object.entries(clientePendienteConIVA)
     .sort(([, a], [, b]) => b - a)
-    .map(([cliente, monto]) => ({ cliente, monto: round2(monto) }));
+    .map(([cliente, monto]) => ({
+      cliente,
+      monto: round2(monto),
+      montoSinIVA: round2(clientePendienteSinIVA[cliente] || 0),
+    }));
   const topClientes = topClientesFull.slice(0, 10);
   const topClientesTotal = round2(topClientes.reduce((s, c) => s + c.monto, 0));
+  const topClientesTotalSinIVA = round2(topClientes.reduce((s, c) => s + c.montoSinIVA, 0));
   const topClientesGrandTotal = round2(topClientesFull.reduce((s, c) => s + c.monto, 0));
+  const topClientesGrandTotalSinIVA = round2(topClientesFull.reduce((s, c) => s + c.montoSinIVA, 0));
 
   // Listas de alertas.
   const proximasVencer = rows
@@ -149,7 +157,9 @@ router.get('/', (req, res) => {
     monthlyChart,
     topClientes,
     topClientesTotal,
+    topClientesTotalSinIVA,
     topClientesGrandTotal,
+    topClientesGrandTotalSinIVA,
     proximasVencer,
     proximasVencerTotal: proximasVencer.length,
     sinFecha,
