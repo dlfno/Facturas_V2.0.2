@@ -15,7 +15,7 @@ export default function AliasModal({ invoice, onClose, onSaved }) {
     setSaving(true);
     setError('');
     try {
-      await saveAlias(invoice.rfc_receptor, alias.trim(), invoice.nombre_receptor);
+      await saveAlias(invoice.nombre_receptor, alias.trim(), invoice.rfc_receptor);
       onSaved?.();
       onClose();
     } catch (err) {
@@ -40,13 +40,13 @@ export default function AliasModal({ invoice, onClose, onSaved }) {
 
         <div className="p-5 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">RFC</label>
-            <p className="font-mono text-sm bg-gray-50 rounded-lg px-3 py-2">{invoice.rfc_receptor}</p>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Nombre en XML</label>
+            <p className="text-sm bg-gray-50 rounded-lg px-3 py-2 break-words">{invoice.nombre_receptor}</p>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Nombre en XML</label>
-            <p className="text-sm bg-gray-50 rounded-lg px-3 py-2 break-words">{invoice.nombre_receptor}</p>
+            <label className="block text-xs font-medium text-gray-500 mb-1">RFC</label>
+            <p className="font-mono text-sm bg-gray-50 rounded-lg px-3 py-2">{invoice.rfc_receptor}</p>
           </div>
 
           <div>
@@ -61,7 +61,7 @@ export default function AliasModal({ invoice, onClose, onSaved }) {
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
             />
             <p className="text-xs text-gray-400 mt-1">
-              Se aplicará a todas las facturas con este RFC
+              Se aplicará solo a facturas con este nombre exacto
             </p>
           </div>
 

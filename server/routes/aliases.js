@@ -9,21 +9,24 @@ router.get('/', (req, res) => {
   res.json(aliases);
 });
 
-// POST /api/aliases — upsert by rfc_receptor
+// POST /api/aliases — upsert by nombre_receptor
 router.post('/', (req, res) => {
-  const { rfc_receptor, alias, nombre_original } = req.body;
-  if (!rfc_receptor || !alias) {
-    return res.status(400).json({ error: 'RFC y alias son requeridos' });
+  const { nombre_receptor, alias, rfc_receptor } = req.body;
+  if (!nombre_receptor || !alias) {
+    return res.status(400).json({ error: 'Nombre y alias son requeridos' });
   }
 
-  const existing = db.prepare('SELECT id FROM client_aliases WHERE rfc_receptor = ?').get(rfc_receptor);
-  if (existing) {
-    db.prepare('UPDATE client_aliases SET alias = ?, nombre_original = ? WHERE id = ?')
-      .run(alias, nombre_original || null, existing.id);
-  } else {
-    db.prepare('INSERT INTO client_aliases (rfc_receptor, alias, nombre_original) VALUES (?, ?, ?)')
-      .run(rfc_receptor, alias, nombre_original || null);
-  }
+  db.prepare(
+    `INSERT INTO client_aliases (nombre_receptor, rfc_receptor, alias)
+     VALUES (@nombre_receptor, @rfc_receptor, @alias)
+     ON CONFLICT(nombre_receptor) DO UPDATE SET
+       alias = excluded.alias,
+       rfc_receptor = excluded.rfc_receptor`
+  ).run({
+    nombre_receptor,
+    rfc_receptor: rfc_receptor || null,
+    alias,
+  });
 
   res.json({ ok: true });
 });

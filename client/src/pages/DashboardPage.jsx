@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import DashboardCards from '../components/DashboardCards';
 import DashboardCharts from '../components/DashboardCharts';
 import ClientSelector from '../components/ClientSelector';
+import FilterBar from '../components/FilterBar';
+import ActiveFilterChips from '../components/ActiveFilterChips';
+import RezagadasPanel from '../components/RezagadasPanel';
 import { getDashboard, updateInvoice } from '../api';
 
 function formatMoney(n) {
@@ -18,6 +21,16 @@ function formatDate(d) {
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
+const EMPTY_FILTERS = {
+  search: '',
+  estado: [],
+  moneda: 'Todas',
+  fecha_desde: '',
+  fecha_hasta: '',
+  fecha_tent_desde: '',
+  fecha_tent_hasta: '',
+};
+
 export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState('consolidado');
@@ -26,13 +39,19 @@ export default function DashboardPage() {
   const [fechaValue, setFechaValue] = useState('');
   const [clientesList, setClientesList] = useState([]);
   const [selectedClientes, setSelectedClientes] = useState([]);
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [sinFechaPage, setSinFechaPage] = useState(1);
   const [proximasPage, setProximasPage] = useState(1);
 
+  const empresa = tab === 'consolidado' ? null : tab.toUpperCase();
+
   const fetchData = useCallback(() => {
     setLoading(true);
-    const empresa = tab === 'consolidado' ? null : tab.toUpperCase();
-    getDashboard({ empresa, clientes: selectedClientes.length > 0 ? selectedClientes : null })
+    getDashboard({
+      empresa,
+      clientes: selectedClientes.length > 0 ? selectedClientes : null,
+      ...filters,
+    })
       .then((d) => {
         setData(d);
         if (d.clientesList) setClientesList(d.clientesList);
@@ -41,7 +60,7 @@ export default function DashboardPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [tab, selectedClientes]);
+  }, [empresa, selectedClientes, filters]);
 
   useEffect(() => {
     fetchData();
@@ -50,6 +69,11 @@ export default function DashboardPage() {
   const handleTabChange = (t) => {
     setSelectedClientes([]);
     setTab(t);
+  };
+
+  const clearAllFilters = () => {
+    setFilters(EMPTY_FILTERS);
+    setSelectedClientes([]);
   };
 
   const saveFecha = async (id) => {
@@ -95,6 +119,17 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <FilterBar filters={filters} onChange={setFilters} hideCliente />
+
+      <ActiveFilterChips
+        filters={filters}
+        setFilters={setFilters}
+        selectedClientes={selectedClientes}
+        setSelectedClientes={setSelectedClientes}
+        clientesList={clientesList}
+        onClearAll={clearAllFilters}
+      />
+
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
@@ -106,6 +141,8 @@ export default function DashboardPage() {
             statusCounts={data.statusCounts}
             monthlyChart={data.monthlyChart}
             topClientes={data.topClientes}
+            topClientesTotal={data.topClientesTotal}
+            topClientesGrandTotal={data.topClientesGrandTotal}
           />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -300,6 +337,8 @@ export default function DashboardPage() {
               );
             })()}
           </div>
+
+          <RezagadasPanel empresa={empresa} />
         </>
       ) : (
         <p className="text-gray-400 text-center py-20">No hay datos disponibles</p>

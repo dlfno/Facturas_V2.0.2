@@ -1,17 +1,18 @@
 import { Search, X } from 'lucide-react';
+import MultiSelect from './MultiSelect';
 
 const ESTADOS = [
-  'TODOS',
   'PENDIENTE',
   'ON TRACK',
   'PROXIMO A VENCER',
   'VENCIDO',
   'PAGADO',
   'CANCELADA',
-  'SIN FECHA',
+  'REVISIÓN',
 ];
+const ESTADOS_ITEMS = ESTADOS.map((e) => ({ key: e, label: e }));
 
-export default function FilterBar({ filters, onChange, clientes = [] }) {
+export default function FilterBar({ filters, onChange, clientes = [], hideCliente = false }) {
   const update = (key, value) => {
     onChange({ ...filters, [key]: value });
   };
@@ -19,7 +20,7 @@ export default function FilterBar({ filters, onChange, clientes = [] }) {
   const clear = () => {
     onChange({
       search: '',
-      estado: 'TODOS',
+      estado: [],
       moneda: 'Todas',
       fecha_desde: '',
       fecha_hasta: '',
@@ -31,7 +32,7 @@ export default function FilterBar({ filters, onChange, clientes = [] }) {
 
   const hasFilters =
     filters.search ||
-    (filters.estado && filters.estado !== 'TODOS') ||
+    (filters.estado && filters.estado.length > 0) ||
     (filters.moneda && filters.moneda !== 'Todas') ||
     filters.fecha_desde ||
     filters.fecha_hasta ||
@@ -46,7 +47,7 @@ export default function FilterBar({ filters, onChange, clientes = [] }) {
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Buscar por cliente, RFC, concepto, proyecto, folio..."
+            placeholder="Buscar por cliente, RFC, folio fiscal, concepto, proyecto..."
             value={filters.search || ''}
             onChange={(e) => update('search', e.target.value)}
             className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -66,17 +67,14 @@ export default function FilterBar({ filters, onChange, clientes = [] }) {
       <div className="flex flex-wrap gap-3">
         <div>
           <label className="block text-xs text-gray-500 mb-1">Estado</label>
-          <select
-            value={filters.estado || 'TODOS'}
-            onChange={(e) => update('estado', e.target.value)}
-            className="border rounded-lg px-2 py-1.5 text-sm min-w-[160px]"
-          >
-            {ESTADOS.map((e) => (
-              <option key={e} value={e}>
-                {e}
-              </option>
-            ))}
-          </select>
+          <MultiSelect
+            items={ESTADOS_ITEMS}
+            selected={filters.estado || []}
+            onChange={(arr) => update('estado', arr)}
+            allLabel="Todos los estados"
+            itemLabelSingular="estado"
+            itemLabelPlural="estados"
+          />
         </div>
 
         <div>
@@ -132,7 +130,7 @@ export default function FilterBar({ filters, onChange, clientes = [] }) {
           />
         </div>
 
-        {clientes.length > 0 && (
+        {!hideCliente && clientes.length > 0 && (
           <div>
             <label className="block text-xs text-gray-500 mb-1">Cliente</label>
             <select

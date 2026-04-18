@@ -76,7 +76,7 @@ export default function SettingsPage() {
     if (!editAliasValue.trim()) return;
     setAliasError('');
     try {
-      await saveAlias(a.rfc_receptor, editAliasValue.trim(), a.nombre_original);
+      await saveAlias(a.nombre_receptor, editAliasValue.trim(), a.rfc_receptor);
       setEditingAliasId(null);
       fetchAliases();
     } catch (err) {
@@ -210,7 +210,6 @@ export default function SettingsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-gray-500 border-b">
-                  <th className="pb-2 pr-3">RFC</th>
                   <th className="pb-2 pr-3">Nombre XML</th>
                   <th className="pb-2 pr-3">Alias</th>
                   <th className="pb-2 w-20"></th>
@@ -219,9 +218,8 @@ export default function SettingsPage() {
               <tbody className="divide-y divide-gray-50">
                 {aliases.map((a) => (
                   <tr key={a.id} className="hover:bg-gray-50">
-                    <td className="py-2.5 pr-3 font-mono text-xs">{a.rfc_receptor}</td>
-                    <td className="py-2.5 pr-3 text-gray-500 max-w-[200px] truncate" title={a.nombre_original}>
-                      {a.nombre_original || '-'}
+                    <td className="py-2.5 pr-3 max-w-[260px] truncate" title={a.nombre_receptor}>
+                      {a.nombre_receptor}
                     </td>
                     <td className="py-2.5 pr-3">
                       {editingAliasId === a.id ? (

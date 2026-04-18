@@ -15,7 +15,7 @@ export default function CompanyPage({ empresa }) {
   const [showUpload, setShowUpload] = useState(false);
   const [filters, setFilters] = useState({
     search: '',
-    estado: 'TODOS',
+    estado: [],
     moneda: 'Todas',
     fecha_desde: '',
     fecha_hasta: '',
@@ -26,6 +26,7 @@ export default function CompanyPage({ empresa }) {
   const [sort, setSort] = useState('fecha_emision');
   const [order, setOrder] = useState('desc');
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
   const [loading, setLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -35,7 +36,7 @@ export default function CompanyPage({ empresa }) {
         empresa,
         ...filters,
         page,
-        limit: 50,
+        limit,
         sort,
         order,
       });
@@ -48,7 +49,12 @@ export default function CompanyPage({ empresa }) {
     } finally {
       setLoading(false);
     }
-  }, [empresa, filters, page, sort, order]);
+  }, [empresa, filters, page, limit, sort, order]);
+
+  const handleLimitChange = (newLimit) => {
+    setLimit(newLimit);
+    setPage(1);
+  };
 
   useEffect(() => {
     fetchData();
@@ -72,9 +78,10 @@ export default function CompanyPage({ empresa }) {
   const exportFilters = {
     empresa,
     ...Object.fromEntries(
-      Object.entries(filters).filter(
-        ([, v]) => v && v !== 'TODOS' && v !== 'Todas'
-      )
+      Object.entries(filters).filter(([, v]) => {
+        if (Array.isArray(v)) return v.length > 0;
+        return v && v !== 'TODOS' && v !== 'Todas';
+      })
     ),
   };
 
@@ -115,6 +122,7 @@ export default function CompanyPage({ empresa }) {
         onRefresh={fetchData}
         pagination={pagination}
         onPageChange={setPage}
+        onLimitChange={handleLimitChange}
       />
     </div>
   );

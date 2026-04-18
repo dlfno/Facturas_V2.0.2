@@ -52,8 +52,8 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS client_aliases (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    rfc_receptor    TEXT UNIQUE NOT NULL,
-    nombre_original TEXT,
+    nombre_receptor TEXT UNIQUE NOT NULL,
+    rfc_receptor    TEXT,
     alias           TEXT NOT NULL
   );
 
@@ -63,6 +63,32 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_fecha_emision ON invoices(fecha_emision);
   CREATE INDEX IF NOT EXISTS idx_fecha_tentativa ON invoices(fecha_tentativa_pago);
 `);
+
+// Migración one-shot: si client_aliases aún tiene el UNIQUE sobre rfc_receptor
+// (schema viejo), recrear con UNIQUE sobre nombre_receptor.
+const aliasCols = db.prepare("PRAGMA table_info(client_aliases)").all();
+const nombreCol = aliasCols.find((c) => c.name === 'nombre_receptor');
+const rfcCol = aliasCols.find((c) => c.name === 'rfc_receptor');
+const needsMigration = rfcCol && (!nombreCol || nombreCol.notnull !== 1);
+if (needsMigration) {
+  const existing = db.prepare('SELECT rfc_receptor, nombre_original, alias FROM client_aliases').all();
+  db.exec(`
+    DROP TABLE client_aliases;
+    CREATE TABLE client_aliases (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre_receptor TEXT UNIQUE NOT NULL,
+      rfc_receptor    TEXT,
+      alias           TEXT NOT NULL
+    );
+  `);
+  const restore = db.prepare(
+    'INSERT OR IGNORE INTO client_aliases (nombre_receptor, rfc_receptor, alias) VALUES (?, ?, ?)'
+  );
+  for (const row of existing) {
+    if (!row.nombre_original) continue;
+    restore.run(row.nombre_original, row.rfc_receptor, row.alias);
+  }
+}
 
 // Seed default company RFCs if empty
 const count = db.prepare('SELECT COUNT(*) as c FROM company_rfcs').get();

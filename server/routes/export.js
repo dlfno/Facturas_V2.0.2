@@ -1,89 +1,43 @@
 const express = require('express');
 const ExcelJS = require('exceljs');
 const db = require('../db');
-const { computeEstadoVisual } = require('./invoices');
+const { buildBaseFilters, buildEstadoFilter, estadoSqlExpr } = require('../utils/invoiceFilters');
 
 const router = express.Router();
 
+// Convierte string 'YYYY-MM-DD' o ISO a Date (o null) sin off-by-one por UTC.
+function toDate(s) {
+  if (!s) return null;
+  return new Date(s.substring(0, 10) + 'T00:00:00');
+}
+
 // GET /api/export?empresa=DLG&...same filters as invoices...
 router.get('/', async (req, res) => {
-  const {
-    empresa,
-    estado,
-    search,
-    moneda,
-    fecha_desde,
-    fecha_hasta,
-    fecha_tent_desde,
-    fecha_tent_hasta,
-    cliente,
-  } = req.query;
+  const { empresa } = req.query;
 
-  const conditions = [];
-  const params = {};
+  const { params: baseParams, where: baseWhere } = buildBaseFilters(req.query);
+  const estadoFilter = buildEstadoFilter(req.query.estados || req.query.estado);
 
-  if (empresa) {
-    conditions.push('empresa = @empresa');
-    params.empresa = empresa;
-  }
-  if (moneda && moneda !== 'Todas') {
-    conditions.push('moneda = @moneda');
-    params.moneda = moneda;
-  }
-  if (fecha_desde) {
-    conditions.push('fecha_emision >= @fecha_desde');
-    params.fecha_desde = fecha_desde;
-  }
-  if (fecha_hasta) {
-    conditions.push('fecha_emision <= @fecha_hasta');
-    params.fecha_hasta = fecha_hasta;
-  }
-  if (fecha_tent_desde) {
-    conditions.push('fecha_tentativa_pago >= @fecha_tent_desde');
-    params.fecha_tent_desde = fecha_tent_desde;
-  }
-  if (fecha_tent_hasta) {
-    conditions.push('fecha_tentativa_pago <= @fecha_tent_hasta');
-    params.fecha_tent_hasta = fecha_tent_hasta;
-  }
-  if (cliente) {
-    conditions.push('nombre_receptor = @cliente');
-    params.cliente = cliente;
-  }
-  if (search) {
-    conditions.push(`(
-      nombre_receptor LIKE @search OR
-      rfc_receptor LIKE @search OR
-      concepto LIKE @search OR
-      proyecto LIKE @search OR
-      folio LIKE @search OR
-      comentarios LIKE @search
-    )`);
-    params.search = `%${search}%`;
-  }
-  if (estado && !['TODOS', 'PENDIENTE', 'ON TRACK', 'PROXIMO A VENCER', 'VENCIDO', 'SIN FECHA'].includes(estado)) {
-    if (['PAGADO', 'CANCELADA'].includes(estado)) {
-      conditions.push('estado = @estado');
-      params.estado = estado;
-    }
-  }
-
-  const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
-  let rows = db.prepare(`SELECT * FROM invoices ${whereClause} ORDER BY fecha_emision DESC`).all(params);
-
-  const today = new Date().toISOString().substring(0, 10);
-  rows = rows.map((r) => ({ ...r, estado_visual: computeEstadoVisual(r, today) }));
-
-  // Post-filter by computed status
-  if (estado && ['PENDIENTE', 'ON TRACK', 'PROXIMO A VENCER', 'VENCIDO', 'SIN FECHA'].includes(estado)) {
-    rows = rows.filter((r) => r.estado_visual === estado);
-  }
+  // Orden ascendente por folio (cast a INTEGER para orden numérico) y luego por serie.
+  const rows = db
+    .prepare(
+      `WITH base AS (
+         SELECT i.*, ca.alias AS cliente_alias,
+           (${estadoSqlExpr}) AS estado_visual
+         FROM invoices i
+         LEFT JOIN client_aliases ca ON ca.nombre_receptor = i.nombre_receptor
+         ${baseWhere}
+       )
+       SELECT * FROM base
+       ${estadoFilter.where}
+       ORDER BY CAST(folio AS INTEGER) ASC, serie ASC`
+    )
+    .all({ ...baseParams, ...estadoFilter.params });
 
   // Build Excel
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet(empresa || 'Cobranza');
 
-  // Header style
   const headerStyle = {
     font: { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 },
     fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } },
@@ -97,11 +51,12 @@ router.get('/', async (req, res) => {
   };
 
   const columns = [
-    { header: 'CFDI', key: 'cfdi', width: 12 },
+    { header: 'CFDI', key: 'cfdi', width: 10 },
     { header: 'Folio Fiscal', key: 'uuid', width: 38 },
     { header: 'Fecha Emisión', key: 'fecha_emision', width: 14 },
     { header: 'RFC', key: 'rfc_receptor', width: 16 },
-    { header: 'Cliente', key: 'nombre_receptor', width: 30 },
+    { header: 'Alias', key: 'alias', width: 24 },
+    { header: 'Cliente (XML)', key: 'nombre_receptor', width: 30 },
     { header: 'Concepto', key: 'concepto', width: 40 },
     { header: 'Proyecto', key: 'proyecto', width: 20 },
     { header: 'Moneda', key: 'moneda', width: 8 },
@@ -118,80 +73,91 @@ router.get('/', async (req, res) => {
 
   sheet.columns = columns;
 
-  // Style header row
+  // Formatos por columna.
+  sheet.getColumn('cfdi').numFmt = '0';
+  sheet.getColumn('fecha_emision').numFmt = 'dd/mm/yyyy';
+  sheet.getColumn('fecha_tentativa_pago').numFmt = 'dd/mm/yyyy';
+  sheet.getColumn('fecha_pago').numFmt = 'dd/mm/yyyy';
+  for (const key of ['subtotal', 'iva', 'iva_retenido', 'total']) {
+    sheet.getColumn(key).numFmt = '$#,##0.00';
+  }
+
   const headerRow = sheet.getRow(1);
-  headerRow.eachCell((cell) => {
-    cell.style = headerStyle;
-  });
+  headerRow.eachCell((cell) => { cell.style = headerStyle; });
   headerRow.height = 30;
 
-  // Add data rows
+  const statusColors = {
+    'PAGADO': 'FF27AE60',
+    'PENDIENTE': 'FFF39C12',
+    'ON TRACK': 'FF27AE60',
+    'PROXIMO A VENCER': 'FFE67E22',
+    'VENCIDO': 'FFE74C3C',
+    'REVISIÓN': 'FFC0392B',
+    'CANCELADA': 'FF95A5A6',
+  };
+  const estadoColIdx = columns.findIndex((c) => c.key === 'estado_visual') + 1;
+
   for (const row of rows) {
+    const isCancelled = row.estado === 'CANCELADA';
+    const mul = isCancelled ? 0 : 1;
+
+    // CFDI: si no hay serie, se intenta como número (Excel lo alinea a la derecha).
+    // Si hay serie alfanumérica, queda como string concatenado.
+    const cfdiValue = row.serie
+      ? `${row.serie}${row.folio}`
+      : (Number.isFinite(Number(row.folio)) ? Number(row.folio) : row.folio);
+
     const dataRow = sheet.addRow({
-      cfdi: row.serie ? `${row.serie}${row.folio}` : row.folio,
+      cfdi: cfdiValue,
       uuid: row.uuid,
-      fecha_emision: row.fecha_emision,
+      fecha_emision: toDate(row.fecha_emision),
       rfc_receptor: row.rfc_receptor,
+      alias: row.cliente_alias || '',
       nombre_receptor: row.nombre_receptor,
       concepto: row.concepto,
       proyecto: row.proyecto,
       moneda: row.moneda,
       tipo_cambio: row.tipo_cambio,
-      subtotal: row.subtotal,
-      iva: row.iva,
-      iva_retenido: row.iva_retenido,
-      total: row.total,
-      fecha_tentativa_pago: row.fecha_tentativa_pago,
+      subtotal: (row.subtotal || 0) * mul,
+      iva: (row.iva || 0) * mul,
+      iva_retenido: (row.iva_retenido || 0) * mul,
+      total: (row.total || 0) * mul,
+      fecha_tentativa_pago: toDate(row.fecha_tentativa_pago),
       estado_visual: row.estado_visual,
-      fecha_pago: row.fecha_pago,
+      fecha_pago: toDate(row.fecha_pago),
       comentarios: row.comentarios,
     });
 
-    // Currency format
-    ['subtotal', 'iva', 'iva_retenido', 'total'].forEach((key) => {
-      const col = columns.findIndex((c) => c.key === key) + 1;
-      if (col > 0) {
-        dataRow.getCell(col).numFmt = '$#,##0.00';
-      }
-    });
-
-    // Status color
-    const estadoCol = columns.findIndex((c) => c.key === 'estado_visual') + 1;
-    const statusColors = {
-      'PAGADO': 'FF27AE60',
-      'PENDIENTE': 'FFF39C12',
-      'ON TRACK': 'FF27AE60',
-      'PROXIMO A VENCER': 'FFE67E22',
-      'VENCIDO': 'FFE74C3C',
-      'SIN FECHA': 'FFC0392B',
-      'CANCELADA': 'FF95A5A6',
-    };
     const color = statusColors[row.estado_visual];
     if (color) {
-      dataRow.getCell(estadoCol).font = { color: { argb: color }, bold: true };
+      dataRow.getCell(estadoColIdx).font = { color: { argb: color }, bold: true };
     }
   }
 
-  // Totals row
+  // Fila de totales con fórmula SUBTOTAL(9,…) para que respete los filtros de Excel.
   if (rows.length > 0) {
-    const totalsRow = sheet.addRow({
-      cfdi: 'TOTALES',
-      subtotal: rows.reduce((s, r) => s + (r.subtotal || 0), 0),
-      iva: rows.reduce((s, r) => s + (r.iva || 0), 0),
-      iva_retenido: rows.reduce((s, r) => s + (r.iva_retenido || 0), 0),
-      total: rows.reduce((s, r) => s + (r.total || 0), 0),
-    });
+    const dataStart = 2;
+    const dataEnd = rows.length + 1;
+    const totalsRow = sheet.addRow({ cfdi: 'TOTALES' });
     totalsRow.font = { bold: true };
-    ['subtotal', 'iva', 'iva_retenido', 'total'].forEach((key) => {
-      const col = columns.findIndex((c) => c.key === key) + 1;
-      if (col > 0) {
-        totalsRow.getCell(col).numFmt = '$#,##0.00';
-      }
-    });
+    for (const key of ['subtotal', 'iva', 'iva_retenido', 'total']) {
+      const colIdx = columns.findIndex((c) => c.key === key) + 1;
+      const colLetter = sheet.getColumn(colIdx).letter;
+      const fallback = rows.reduce(
+        (s, r) => s + ((r.estado === 'CANCELADA' ? 0 : r[key]) || 0),
+        0
+      );
+      totalsRow.getCell(colIdx).value = {
+        formula: `SUBTOTAL(9,${colLetter}${dataStart}:${colLetter}${dataEnd})`,
+        result: fallback,
+      };
+      totalsRow.getCell(colIdx).numFmt = '$#,##0.00';
+    }
   }
 
-  // Auto-filter
-  sheet.autoFilter = { from: 'A1', to: `P${rows.length + 1}` };
+  // Auto-filter cubriendo todas las columnas (ahora hay 18 en vez de 17).
+  const lastColLetter = sheet.getColumn(columns.length).letter;
+  sheet.autoFilter = { from: 'A1', to: `${lastColLetter}${rows.length + 1}` };
 
   const dateStr = new Date().toISOString().substring(0, 10);
   const filename = `Cobranza_${empresa || 'Consolidado'}_${dateStr}.xlsx`;

@@ -12,10 +12,29 @@ async function request(path, options = {}) {
   return res.json();
 }
 
+function serializeFilters(params) {
+  const { estado, ...rest } = params;
+  const out = {};
+  if (Array.isArray(estado) && estado.length > 0) {
+    out.estados = estado.join('|');
+  } else if (typeof estado === 'string' && estado && estado !== 'TODOS') {
+    // Retrocompat por si alguna llamada pasa el estado como string.
+    out.estado = estado;
+  }
+  for (const [k, v] of Object.entries(rest)) {
+    if (v == null || v === '') continue;
+    if (Array.isArray(v)) {
+      if (v.length === 0) continue;
+      out[k] = v.join('|');
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
 export function getInvoices(params) {
-  const query = new URLSearchParams(
-    Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
-  ).toString();
+  const query = new URLSearchParams(serializeFilters(params)).toString();
   return request(`/invoices?${query}`);
 }
 
@@ -56,18 +75,44 @@ export async function uploadFiles(files, empresa) {
   return res.json();
 }
 
-export function getDashboard({ empresa, clientes } = {}) {
+export function getDashboard({
+  empresa,
+  clientes,
+  estado,
+  moneda,
+  search,
+  fecha_desde,
+  fecha_hasta,
+  fecha_tent_desde,
+  fecha_tent_hasta,
+} = {}) {
   const params = {};
   if (empresa) params.empresa = empresa;
   if (clientes && clientes.length > 0) params.clientes = clientes.join('|');
+  if (Array.isArray(estado) && estado.length > 0) {
+    params.estados = estado.join('|');
+  } else if (typeof estado === 'string' && estado && estado !== 'TODOS') {
+    params.estado = estado;
+  }
+  if (moneda && moneda !== 'Todas') params.moneda = moneda;
+  if (search) params.search = search;
+  if (fecha_desde) params.fecha_desde = fecha_desde;
+  if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+  if (fecha_tent_desde) params.fecha_tent_desde = fecha_tent_desde;
+  if (fecha_tent_hasta) params.fecha_tent_hasta = fecha_tent_hasta;
   const query = new URLSearchParams(params).toString();
   return request(`/dashboard${query ? '?' + query : ''}`);
 }
 
+export function getRezagadas({ empresa } = {}) {
+  const params = {};
+  if (empresa) params.empresa = empresa;
+  const query = new URLSearchParams(params).toString();
+  return request(`/dashboard/rezagadas${query ? '?' + query : ''}`);
+}
+
 export function getExportUrl(params) {
-  const query = new URLSearchParams(
-    Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ''))
-  ).toString();
+  const query = new URLSearchParams(serializeFilters(params)).toString();
   return `${BASE}/export?${query}`;
 }
 
@@ -94,10 +139,10 @@ export function getAliases() {
   return request('/aliases');
 }
 
-export function saveAlias(rfc_receptor, alias, nombre_original) {
+export function saveAlias(nombre_receptor, alias, rfc_receptor = null) {
   return request('/aliases', {
     method: 'POST',
-    body: JSON.stringify({ rfc_receptor, alias, nombre_original }),
+    body: JSON.stringify({ nombre_receptor, alias, rfc_receptor }),
   });
 }
 

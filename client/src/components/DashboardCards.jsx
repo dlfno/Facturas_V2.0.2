@@ -14,50 +14,9 @@ function formatMoney(n) {
   });
 }
 
-const cards = [
-  {
-    key: 'totalFacturadoMXN',
-    label: 'Total Facturado',
-    icon: DollarSign,
-    color: 'blue',
-    format: 'money',
-  },
-  {
-    key: 'totalCobrado',
-    label: 'Total Cobrado',
-    icon: CheckCircle,
-    color: 'green',
-    format: 'money',
-  },
-  {
-    key: 'totalPendiente',
-    label: 'Pendiente de Cobro',
-    icon: Clock,
-    color: 'yellow',
-    format: 'money',
-  },
-  {
-    key: 'totalFacturas',
-    label: 'Total Facturas',
-    icon: FileText,
-    color: 'slate',
-    format: 'number',
-  },
-  {
-    key: 'sinFechaCount',
-    label: 'Sin Fecha Tentativa',
-    icon: AlertCircle,
-    color: 'red',
-    format: 'number',
-  },
-  {
-    key: 'vencidasCount',
-    label: 'Vencidas',
-    icon: AlertTriangle,
-    color: 'red',
-    format: 'number',
-  },
-];
+function formatCount(n) {
+  return (n || 0).toLocaleString('es-MX');
+}
 
 const colorClasses = {
   blue: 'bg-blue-50 text-blue-600 border-blue-200',
@@ -75,25 +34,72 @@ const iconBg = {
   slate: 'bg-slate-100',
 };
 
+function Card({ icon: Icon, label, color, value, subValue, subLabel }) {
+  return (
+    <div className={`rounded-xl border p-4 ${colorClasses[color]}`}>
+      <div className={`inline-flex p-2 rounded-lg ${iconBg[color]} mb-3`}>
+        <Icon size={20} />
+      </div>
+      <p className="text-xs font-medium opacity-75 mb-1">{label}</p>
+      <p className="text-lg font-bold leading-tight">{value}</p>
+      {subValue !== undefined && (
+        <p className="text-[11px] font-medium opacity-70 mt-1">
+          {subLabel}: {subValue}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardCards({ kpis }) {
   if (!kpis) return null;
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-      {cards.map(({ key, label, icon: Icon, color, format }) => (
-        <div
-          key={key}
-          className={`rounded-xl border p-4 ${colorClasses[color]}`}
-        >
-          <div className={`inline-flex p-2 rounded-lg ${iconBg[color]} mb-3`}>
-            <Icon size={20} />
-          </div>
-          <p className="text-xs font-medium opacity-75 mb-1">{label}</p>
-          <p className="text-lg font-bold">
-            {format === 'money' ? `$${formatMoney(kpis[key])}` : kpis[key]}
-          </p>
-        </div>
-      ))}
+      <Card
+        icon={DollarSign}
+        label="Total Facturado"
+        color="blue"
+        value={`$${formatMoney(kpis.totalFacturadoConIVA)}`}
+        subValue={`$${formatMoney(kpis.totalFacturadoSinIVA)}`}
+        subLabel="Sin IVA"
+      />
+      <Card
+        icon={CheckCircle}
+        label="Total Cobrado"
+        color="green"
+        value={`$${formatMoney(kpis.totalCobradoConIVA)}`}
+        subValue={`$${formatMoney(kpis.totalCobradoSinIVA)}`}
+        subLabel="Sin IVA"
+      />
+      <Card
+        icon={Clock}
+        label="Pendiente de Cobro"
+        color="yellow"
+        value={`$${formatMoney(kpis.totalPendienteConIVA)}`}
+        subValue={`$${formatMoney(kpis.totalPendienteSinIVA)}`}
+        subLabel="Sin IVA"
+      />
+      <Card
+        icon={FileText}
+        label="Total Facturas"
+        color="slate"
+        value={formatCount(kpis.totalFacturas)}
+        subValue={`${formatCount(kpis.totalActivas)} · Canc. ${formatCount(kpis.totalCanceladas)}`}
+        subLabel="Activas"
+      />
+      <Card
+        icon={AlertCircle}
+        label="Sin Fecha Tentativa"
+        color="red"
+        value={formatCount(kpis.sinFechaCount)}
+      />
+      <Card
+        icon={AlertTriangle}
+        label="Vencidas"
+        color="red"
+        value={formatCount(kpis.vencidasCount)}
+      />
     </div>
   );
 }

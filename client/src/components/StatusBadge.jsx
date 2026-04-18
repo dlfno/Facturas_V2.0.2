@@ -4,7 +4,7 @@ const statusConfig = {
   'PENDIENTE': { bg: 'bg-yellow-100', text: 'text-yellow-800', dot: 'bg-yellow-500' },
   'PROXIMO A VENCER': { bg: 'bg-orange-100', text: 'text-orange-800', dot: 'bg-orange-500' },
   'VENCIDO': { bg: 'bg-red-100', text: 'text-red-800', dot: 'bg-red-500' },
-  'SIN FECHA': { bg: 'bg-red-100', text: 'text-red-700', dot: 'bg-red-600' },
+  'REVISIÓN': { bg: 'bg-red-100', text: 'text-red-700', dot: 'bg-red-600' },
   'CANCELADA': { bg: 'bg-gray-100', text: 'text-gray-600', dot: 'bg-gray-400' },
 };
 

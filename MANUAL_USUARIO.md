@@ -39,9 +39,9 @@ La barra lateral se puede **colapsar** haciendo clic en el botón de menú en la
 
 ## 2. Dashboard
 
-El Dashboard presenta un resumen ejecutivo de la cobranza. En la parte superior derecha se encuentran dos controles:
+El Dashboard presenta un resumen ejecutivo de la cobranza. En la parte superior se encuentran los controles de filtrado:
 
-**Filtro por cliente:** Desplegable que permite seleccionar uno o varios clientes. Al aplicar el filtro, todos los KPIs, gráficas y tablas de alerta se actualizan para mostrar solo los datos de los clientes seleccionados. Para limpiar la selección, haz clic en la **×** del botón o usa "Deseleccionar todos" dentro del desplegable.
+**Filtro por cliente (multi-selección):** Desplegable que permite seleccionar uno o varios clientes. Al aplicar el filtro, todos los KPIs, gráficas y tablas de alerta se actualizan para mostrar solo los datos de los clientes seleccionados. Para limpiar la selección, haz clic en la **×** del botón o usa "Deseleccionar todos" dentro del desplegable.
 
 **Vista por empresa:**
 - **Consolidado**: Datos de ambas empresas combinados.
@@ -50,29 +50,41 @@ El Dashboard presenta un resumen ejecutivo de la cobranza. En la parte superior 
 
 Al cambiar de vista, el filtro de cliente se limpia automáticamente.
 
+**Barra de filtros:** Debajo del encabezado, el Dashboard incluye la misma barra de filtros que las páginas de empresa: búsqueda libre, estado (multi-selección), moneda, rango de fecha de emisión y rango de fecha tentativa. Todos son combinables con el selector de clientes.
+
+**Chips de filtros activos:** Cuando hay filtros aplicados, se muestran como pills azules debajo de la barra. Cada chip tiene una **×** para removerlo individualmente. Si hay más de un chip, aparece un botón "Limpiar todo".
+
 ### Indicadores (KPIs)
 
 | Indicador | Descripción |
 |-----------|-------------|
-| **Total Facturado** | Suma de todos los totales (USD convertido a MXN) |
-| **Total Cobrado** | Suma de facturas marcadas como PAGADO |
-| **Pendiente de Cobro** | Diferencia entre facturado y cobrado |
-| **Total Facturas** | Cantidad total de facturas |
-| **Sin Fecha Tentativa** | Facturas sin fecha tentativa de pago asignada |
-| **Vencidas** | Facturas cuya fecha tentativa ya pasó sin haberse cobrado |
+| **Total Facturado** | Suma de totales con IVA (USD convertido a MXN). Debajo se muestra el subtotal sin IVA. |
+| **Total Cobrado** | Suma de facturas en estado PAGADO, con IVA y sin IVA. |
+| **Pendiente de Cobro** | Suma de facturas no pagadas ni canceladas, con IVA y sin IVA. |
+| **Total Facturas** | Cantidad total de facturas. Debajo muestra el desglose: "Activas: N · Canc.: M". |
+| **Sin Fecha Tentativa** | Facturas en estado REVISIÓN (sin fecha tentativa a 7+ días de la emisión). |
+| **Vencidas** | Facturas cuya fecha tentativa ya pasó sin haberse cobrado. |
 
 ### Gráficas
 
 - **Distribución por Estado**: Gráfica de dona que muestra la proporción de facturas por estado.
-- **Facturación Mensual**: Gráfica de barras con el monto facturado por mes (últimos 12 meses).
-- **Top 10 Clientes por Monto Pendiente**: Gráfica horizontal mostrando los clientes con mayor deuda.
+- **Facturación Mensual**: Gráfica de barras con el monto facturado por mes.
+- **Top 10 Clientes por Monto Pendiente**: Gráfica horizontal mostrando los clientes con mayor deuda. Al pie se muestra la suma del top 10 y, si hay más clientes pendientes fuera del top, el total global pendiente.
 
 ### Tablas de Alerta
 
 - **Próximas a Vencer**: Facturas que vencen dentro de los próximos 7 días. El contador muestra el total real aunque se pagine.
-- **Sin Fecha de Pago**: Facturas que necesitan asignación de fecha tentativa. El contador muestra el total real. Se puede asignar la fecha directamente desde esta tabla haciendo clic en **Asignar fecha** y presionando el botón **OK**.
+- **Sin Fecha de Pago**: Facturas que necesitan asignación de fecha tentativa (estado REVISIÓN). El contador muestra el total real. Se puede asignar la fecha directamente desde esta tabla haciendo clic en **Asignar fecha** y presionando el botón **OK**.
 
 Ambas tablas muestran 20 facturas por página. Si hay más, aparecen los botones **Anterior** / **Siguiente** con un indicador de rango (p. ej. "1–20 de 47").
+
+### Facturas Rezagadas
+
+Al final del Dashboard, la sección **Facturas Rezagadas** detecta folios CFDI faltantes en la secuencia numérica de los ya cargados, agrupados por empresa y serie. Por ejemplo, si están cargados los folios {2293, 2294, 2296, 2297, 2300}, se reportarán como faltantes: 2295, 2298 y 2299.
+
+- Cada grupo muestra el rango (min–max), la cantidad de faltantes y un ícono para expandir la lista completa de folios ausentes.
+- Las facturas canceladas cuentan como "presentes" (el folio fue consumido ante el SAT), por lo que no aparecen en la lista de rezagadas.
+- Si no hay huecos en ninguna serie, la sección muestra un mensaje positivo: "No se detectaron folios faltantes".
 
 ---
 
@@ -129,7 +141,7 @@ Haz clic en el encabezado de cualquier columna marcada con flecha para alternar 
 
 ### Paginación
 
-La tabla muestra 50 facturas por página. En la parte inferior se encuentran los controles de paginación con los botones **Anterior**, páginas numéricas y **Siguiente**.
+La tabla muestra 50 facturas por página por defecto. En la parte inferior se encuentran los controles de paginación con los botones **Anterior**, páginas numéricas y **Siguiente**, además de un selector **Por página** con las opciones **25 / 50 / 100 / 200**. Al cambiar la cantidad, la tabla regresa automáticamente a la página 1.
 
 ### Columna CFDI fija
 
@@ -150,6 +162,13 @@ Se pueden fijar ambas columnas al mismo tiempo. El orden de fijación sigue el o
 
 Las filas alternan entre blanco y gris claro para facilitar la lectura.
 
+### Indicador visual de alias
+
+Junto al nombre del cliente hay un ícono de etiqueta que indica si el cliente ya tiene un alias configurado:
+
+- **Ícono azul sólido**: el cliente tiene alias. El tooltip muestra el alias aplicado.
+- **Ícono gris (contorno)**: el cliente no tiene alias; se muestra el nombre del XML tal cual. Haz clic para asignar uno.
+
 ---
 
 ## 5. Filtros y Búsqueda
@@ -161,6 +180,7 @@ La barra de filtros se encuentra encima de la tabla de facturas.
 Escribe en el campo de búsqueda para filtrar por:
 - Nombre del cliente o alias
 - RFC del receptor
+- **Folio fiscal (UUID)** — puedes pegar los primeros caracteres o cualquier fragmento
 - Concepto
 - Proyecto
 - Folio o serie
@@ -172,11 +192,13 @@ La búsqueda se aplica en tiempo real conforme se escribe.
 
 | Filtro | Opciones |
 |--------|----------|
-| **Estado** | Todos, Pendiente, On Track, Próximo a Vencer, Vencido, Pagado, Cancelada, Sin Fecha |
+| **Estado** | Multi-selección: Pendiente, On Track, Próximo a Vencer, Vencido, Pagado, Cancelada, Revisión |
 | **Moneda** | Todas, MXN, USD |
 | **Fecha emisión desde/hasta** | Selector de fecha |
 | **Fecha tentativa desde/hasta** | Selector de fecha |
 | **Cliente** | Lista desplegable con todos los clientes |
+
+El filtro de **Estado** se abre como un desplegable con checkboxes — puedes seleccionar varios estados al mismo tiempo (por ejemplo, Vencido + Revisión para ver todo lo urgente). El botón muestra un resumen: "Todos los estados", "1 estado" o "N estados". Incluye atajos "Seleccionar todos" / "Deseleccionar todos" dentro del desplegable.
 
 Todos los filtros son combinables entre sí. Para restablecer todos los filtros, haz clic en el botón **Limpiar**.
 
@@ -202,7 +224,7 @@ Cuando el texto de **Proyecto** o **Comentarios** es largo y aparece truncado:
 
 ### Fecha Tentativa de Pago
 
-1. Haz clic sobre la fecha (o donde dice "Sin fecha") para abrir el selector de fecha.
+1. Haz clic sobre la fecha (o donde dice "Revisión") para abrir el selector de fecha.
 2. Selecciona la fecha deseada.
 3. Presiona **Enter** o haz clic fuera del campo para guardar.
 4. Presiona **Escape** para cancelar.
@@ -250,17 +272,19 @@ El estado de cada factura se calcula automáticamente según sus fechas:
 |--------|-------|-----------|
 | **Pagado** | Verde | Factura marcada como cobrada |
 | **On Track** | Verde esmeralda | Fecha tentativa a más de 7 días |
-| **Pendiente** | Amarillo | Sin fecha tentativa, creada hace menos de 7 días |
+| **Pendiente** | Amarillo | Sin fecha tentativa, emitida hace menos de 7 días |
 | **Próximo a Vencer** | Naranja | Fecha tentativa dentro de los próximos 7 días |
 | **Vencido** | Rojo | Fecha tentativa ya pasó y no se ha cobrado |
-| **Sin Fecha** | Rojo oscuro | Sin fecha tentativa, creada hace más de 7 días |
+| **Revisión** | Rojo oscuro | Sin fecha tentativa y emitida hace 7 días o más |
 | **Cancelada** | Gris | Factura cancelada manualmente |
+
+> El umbral de 7 días se mide desde la **fecha de emisión** del CFDI, no desde la fecha de carga al sistema. Si una factura emitida hace un mes se carga hoy, entra directamente a **Revisión**.
 
 ### Panel de alertas
 
 En las páginas de empresa (DLG/SMGS), se muestra un panel con tres secciones de alerta:
 
-- **Sin Fecha Tentativa**: Facturas que llevan más de 7 días sin fecha tentativa asignada.
+- **Sin Fecha Tentativa**: Facturas en estado Revisión (emitidas hace 7+ días sin fecha tentativa).
 - **Próximas a Vencer**: Facturas que vencen en los próximos 7 días.
 - **Vencidas**: Facturas cuya fecha tentativa ya pasó.
 
@@ -275,17 +299,21 @@ Los alias permiten asignar nombres cortos y legibles a los clientes, reemplazand
 ### Asignar un alias desde la tabla
 
 1. En la columna **Cliente**, haz clic en el icono de etiqueta junto al nombre.
-2. En el modal, escribe el alias deseado (por ejemplo: "Citibanamex").
-3. Haz clic en **Guardar**.
+2. En el modal se muestran el nombre del XML y el RFC como referencia.
+3. Escribe el alias deseado (por ejemplo: "Citibanamex") y haz clic en **Guardar**.
 
-El alias se aplica automáticamente a **todas las facturas** del mismo RFC receptor, incluyendo facturas futuras.
+El alias se aplica automáticamente a **todas las facturas cuyo nombre del XML coincida exactamente**, incluyendo facturas futuras. Esto permite asignar alias distintos a clientes internacionales que comparten el RFC genérico **XEXX010101000**.
+
+> Si un mismo cliente aparece con variantes del nombre en distintas facturas (por ejemplo por mayúsculas, comas o espacios), cada variante requiere su propio alias.
 
 ### Administrar alias desde Configuración
 
 1. Ve a **Configuración** > sección **Alias de Clientes**.
-2. Aquí puedes ver todos los alias configurados con su RFC y nombre original del XML.
+2. La tabla muestra el **Nombre XML** (clave) y el **Alias** asignado.
 3. Haz clic en el icono de lápiz para editar un alias existente.
 4. Haz clic en el icono de basura para eliminar un alias.
+
+Si intentas crear un alias para un nombre que ya tiene uno configurado, el alias anterior se sobreescribe automáticamente.
 
 ---
 
@@ -320,10 +348,15 @@ Desde las páginas de empresa (DLG/SMGS):
 
 ### Contenido del archivo
 
-- Todas las facturas que coincidan con los **filtros activos** al momento de exportar.
-- Columnas: CFDI, Folio Fiscal, Fecha Emisión, RFC, Cliente, Concepto, Proyecto, Moneda, T.C., Subtotal, IVA, IVA Retenido, Total, Fecha Tent. Pago, Estado, Fecha Pago, Comentarios.
+- Todas las facturas que coincidan con los **filtros activos** al momento de exportar (sin límite de paginación — el xlsx trae todo el resultado filtrado, no solo la página visible).
+- Columnas: CFDI, Folio Fiscal, Fecha Emisión, RFC, **Alias**, **Cliente (XML)**, Concepto, Proyecto, Moneda, T.C., Subtotal, IVA, IVA Retenido, Total, Fecha Tent. Pago, Estado, Fecha Pago, Comentarios.
+- Las facturas se ordenan **ascendentemente por folio CFDI** para facilitar auditorías secuenciales.
+- **Alias y Cliente (XML)** son columnas separadas: el alias está vacío cuando el cliente no tiene uno configurado.
+- **CFDI** se exporta como número entero (alineado a la derecha). **Fechas** en formato DD/MM/AAAA.
+- **Montos** con formato de moneda (`$#,##0.00`).
+- **Facturas canceladas**: todos los montos (Subtotal, IVA, IVA Retenido, Total) se exportan como **0**; el estado "Cancelada" sigue visible para identificarlas.
 - La columna de Estado muestra colores según el tipo (verde para pagado, rojo para vencido, etc.).
-- Incluye una **fila de totales** al final con la suma de Subtotal, IVA, IVA Retenido y Total.
+- **Fila de totales** al final con fórmula `=SUBTOTAL(9, rango)`. Al aplicar filtros manuales en Excel, los totales se recalculan automáticamente para reflejar solo las filas visibles.
 - El archivo viene con **auto-filtro** habilitado en todas las columnas para facilitar el análisis en Excel.
 
 ---

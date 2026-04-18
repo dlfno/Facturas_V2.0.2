@@ -18,7 +18,7 @@ const STATUS_COLORS = {
   'PENDIENTE': '#f39c12',
   'PROXIMO A VENCER': '#e67e22',
   'VENCIDO': '#e74c3c',
-  'SIN FECHA': '#c0392b',
+  'REVISIÓN': '#c0392b',
   'CANCELADA': '#95a5a6',
 };
 
@@ -41,7 +41,7 @@ function formatMoney(n) {
   })}`;
 }
 
-export default function DashboardCharts({ statusCounts, monthlyChart, topClientes }) {
+export default function DashboardCharts({ statusCounts, monthlyChart, topClientes, topClientesTotal, topClientesGrandTotal }) {
   // Pie chart data
   const pieData = Object.entries(statusCounts || {}).map(([name, value]) => ({
     name,
@@ -141,27 +141,41 @@ export default function DashboardCharts({ statusCounts, monthlyChart, topCliente
           Top 10 Clientes (Pendiente)
         </h3>
         {clientesData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={clientesHeight}>
-            <BarChart data={clientesData} layout="vertical" margin={{ left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={formatMoneyShort} />
-              <YAxis
-                type="category"
-                dataKey="label"
-                tick={{ fontSize: 11, width: 130 }}
-                width={140}
-                interval={0}
-              />
-              <Tooltip
-                formatter={(v) => formatMoney(v)}
-                labelFormatter={(label) => {
-                  const item = clientesData.find((c) => c.label === label);
-                  return item ? item.cliente : label;
-                }}
-              />
-              <Bar dataKey="monto" fill="#f59e0b" radius={[0, 4, 4, 0]} name="Pendiente" barSize={20} />
-            </BarChart>
-          </ResponsiveContainer>
+          <>
+            <ResponsiveContainer width="100%" height={clientesHeight}>
+              <BarChart data={clientesData} layout="vertical" margin={{ left: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={formatMoneyShort} />
+                <YAxis
+                  type="category"
+                  dataKey="label"
+                  tick={{ fontSize: 11, width: 130 }}
+                  width={140}
+                  interval={0}
+                />
+                <Tooltip
+                  formatter={(v) => formatMoney(v)}
+                  labelFormatter={(label) => {
+                    const item = clientesData.find((c) => c.label === label);
+                    return item ? item.cliente : label;
+                  }}
+                />
+                <Bar dataKey="monto" fill="#f59e0b" radius={[0, 4, 4, 0]} name="Pendiente" barSize={20} />
+              </BarChart>
+            </ResponsiveContainer>
+            {topClientesTotal !== undefined && (
+              <div className="mt-3 pt-3 border-t border-gray-100 flex items-baseline justify-between">
+                <span className="text-xs text-gray-500">Total top 10</span>
+                <span className="text-sm font-semibold text-gray-800">{formatMoney(topClientesTotal)}</span>
+              </div>
+            )}
+            {topClientesGrandTotal !== undefined && topClientesGrandTotal > topClientesTotal && (
+              <div className="flex items-baseline justify-between mt-1">
+                <span className="text-[11px] text-gray-400">Total pendiente (todos los clientes)</span>
+                <span className="text-xs text-gray-500">{formatMoney(topClientesGrandTotal)}</span>
+              </div>
+            )}
+          </>
         ) : (
           <p className="text-gray-400 text-center py-12">Sin pendientes</p>
         )}

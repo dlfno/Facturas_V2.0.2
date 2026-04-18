@@ -1,150 +1,155 @@
 const express = require('express');
 const db = require('../db');
-const { computeEstadoVisual } = require('./invoices');
+const { buildBaseFilters, buildEstadoFilter, estadoSqlExpr } = require('../utils/invoiceFilters');
+const { detectRezagadas } = require('../utils/rezagadas');
 
 const router = express.Router();
 
-// GET /api/dashboard?empresa=DLG&clientes=RFC1|RFC2 (clientes = pipe-separated nombre_receptor)
+// Convierte a MXN. `total` siempre se asume en la moneda de la factura.
+function toMXN(val, inv) {
+  if (!val) return 0;
+  if (inv.moneda === 'USD') return val * (inv.tipo_cambio || 1);
+  return val;
+}
+
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
+
+// GET /api/dashboard — KPIs del dashboard con filtros combinables.
+// Params: empresa, estado, moneda, search, fecha_desde, fecha_hasta,
+//         fecha_tent_desde, fecha_tent_hasta, clientes (pipe-separated).
 router.get('/', (req, res) => {
-  const { empresa, clientes: clientesParam } = req.query;
-  const whereEmpresa = empresa ? 'WHERE i.empresa = ?' : '';
-  const empresaParams = empresa ? [empresa] : [];
-  const clientesFiltro = clientesParam ? clientesParam.split('|').filter(Boolean) : null;
+  const {
+    empresa,
+    estado,
+    estados,
+    moneda,
+    search,
+    fecha_desde,
+    fecha_hasta,
+    fecha_tent_desde,
+    fecha_tent_hasta,
+    clientes: clientesParam,
+  } = req.query;
 
-  const today = new Date().toISOString().substring(0, 10);
+  // clientesList se calcula con el filtro de empresa únicamente (no con los filtros
+  // de fecha/estado), para que el selector no oculte opciones al filtrar.
+  const empresaFilter = buildBaseFilters({ empresa });
+  const clientesListRows = db
+    .prepare(
+      `SELECT DISTINCT i.nombre_receptor AS key, COALESCE(a.alias, i.nombre_receptor) AS label
+       FROM invoices i
+       LEFT JOIN client_aliases a ON a.nombre_receptor = i.nombre_receptor
+       ${empresaFilter.where}`
+    )
+    .all(empresaFilter.params);
+  const clientesList = clientesListRows.sort((a, b) => a.label.localeCompare(b.label, 'es'));
 
-  // All invoices with alias join (needed for clientesList and KPIs)
-  const allInvoices = db
-    .prepare(`
-      SELECT i.*, COALESCE(a.alias, i.nombre_receptor) AS nombre_display
-      FROM invoices i
-      LEFT JOIN client_aliases a ON i.rfc_receptor = a.rfc_receptor
-      ${whereEmpresa}
-    `)
-    .all(...empresaParams);
+  // Filtros completos (base + estado post-CTE).
+  const { params: baseParams, where: baseWhere } = buildBaseFilters({
+    empresa, moneda, fecha_desde, fecha_hasta, fecha_tent_desde, fecha_tent_hasta,
+    search, clientes: clientesParam,
+  });
 
-  // Build client list (full, unfiltered — for the selector)
-  const clientesMap = new Map();
-  for (const inv of allInvoices) {
-    if (!clientesMap.has(inv.nombre_receptor)) {
-      clientesMap.set(inv.nombre_receptor, inv.nombre_display || inv.nombre_receptor);
-    }
-  }
-  const clientesList = [...clientesMap.entries()]
-    .map(([key, label]) => ({ key, label }))
-    .sort((a, b) => a.label.localeCompare(b.label, 'es'));
+  const estadoFilter = buildEstadoFilter(estados || estado);
+  const estadoWhere = estadoFilter.where;
+  const params = { ...baseParams, ...estadoFilter.params };
 
-  // Apply cliente filter (if any) before computing KPIs
-  const baseInvoices = clientesFiltro && clientesFiltro.length > 0
-    ? allInvoices.filter((inv) => clientesFiltro.includes(inv.nombre_receptor))
-    : allInvoices;
+  const rows = db
+    .prepare(
+      `WITH base AS (
+         SELECT i.*, COALESCE(a.alias, i.nombre_receptor) AS nombre_display,
+           (${estadoSqlExpr}) AS estado_visual
+         FROM invoices i
+         LEFT JOIN client_aliases a ON a.nombre_receptor = i.nombre_receptor
+         ${baseWhere}
+       )
+       SELECT * FROM base
+       ${estadoWhere}`
+    )
+    .all(params);
 
-  const enriched = baseInvoices.map((row) => ({
-    ...row,
-    estado_visual: computeEstadoVisual(row, today),
-  }));
+  // KPIs de dinero: con IVA (total) y sin IVA (subtotal), en MXN.
+  // "Facturado" excluye canceladas pero incluye pagadas.
+  const noCanceladas = rows.filter((i) => i.estado !== 'CANCELADA');
+  const totalFacturadoConIVA = noCanceladas.reduce((s, i) => s + toMXN(i.total, i), 0);
+  const totalFacturadoSinIVA = noCanceladas.reduce((s, i) => s + toMXN(i.subtotal, i), 0);
 
-  // KPI: Total facturado MXN (convirtiendo USD)
-  const totalFacturadoMXN = enriched.reduce((sum, inv) => {
-    if (inv.estado === 'CANCELADA') return sum;
-    if (inv.moneda === 'USD') {
-      return sum + inv.total * (inv.tipo_cambio || 1);
-    }
-    return sum + inv.total;
-  }, 0);
+  const pagadas = rows.filter((i) => i.estado === 'PAGADO');
+  const totalCobradoConIVA = pagadas.reduce((s, i) => s + toMXN(i.total, i), 0);
+  const totalCobradoSinIVA = pagadas.reduce((s, i) => s + toMXN(i.subtotal, i), 0);
 
-  // KPI: Total cobrado
-  const totalCobrado = enriched
-    .filter((i) => i.estado === 'PAGADO')
-    .reduce((sum, inv) => {
-      if (inv.moneda === 'USD') {
-        return sum + inv.total * (inv.tipo_cambio || 1);
-      }
-      return sum + inv.total;
-    }, 0);
+  const pendientes = rows.filter((i) => !['PAGADO', 'CANCELADA'].includes(i.estado));
+  const totalPendienteConIVA = pendientes.reduce((s, i) => s + toMXN(i.total, i), 0);
+  const totalPendienteSinIVA = pendientes.reduce((s, i) => s + toMXN(i.subtotal, i), 0);
 
-  // KPI: Total pendiente
-  const totalPendiente = enriched
-    .filter((i) => !['PAGADO', 'CANCELADA'].includes(i.estado))
-    .reduce((sum, inv) => {
-      if (inv.moneda === 'USD') {
-        return sum + inv.total * (inv.tipo_cambio || 1);
-      }
-      return sum + inv.total;
-    }, 0);
+  // Conteo de facturas, con desglose canceladas/activas.
+  const totalFacturas = rows.length;
+  const totalCanceladas = rows.filter((i) => i.estado === 'CANCELADA').length;
+  const totalActivas = totalFacturas - totalCanceladas;
 
-  // Counts by visual status
+  // Conteos por estado_visual (ya computado en SQL).
   const statusCounts = {};
-  for (const inv of enriched) {
+  for (const inv of rows) {
     statusCounts[inv.estado_visual] = (statusCounts[inv.estado_visual] || 0) + 1;
   }
 
-  // Facturacion mensual (last 12 months)
+  // Facturación mensual (excluyendo canceladas).
   const monthlyData = {};
-  for (const inv of enriched) {
-    if (inv.estado === 'CANCELADA') continue;
-    const month = inv.fecha_emision.substring(0, 7); // YYYY-MM
-    if (!monthlyData[month]) monthlyData[month] = 0;
-    if (inv.moneda === 'USD') {
-      monthlyData[month] += inv.total * (inv.tipo_cambio || 1);
-    } else {
-      monthlyData[month] += inv.total;
-    }
+  for (const inv of noCanceladas) {
+    const month = (inv.fecha_emision || '').substring(0, 7);
+    if (!month) continue;
+    monthlyData[month] = (monthlyData[month] || 0) + toMXN(inv.total, inv);
   }
-
   const monthlyChart = Object.entries(monthlyData)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([mes, monto]) => ({ mes, monto: Math.round(monto * 100) / 100 }));
+    .map(([mes, monto]) => ({ mes, monto: round2(monto) }));
 
-  // Top 10 clientes por monto pendiente
+  // Top 10 clientes por monto pendiente.
   const clientePendiente = {};
-  for (const inv of enriched) {
-    if (['PAGADO', 'CANCELADA'].includes(inv.estado)) continue;
+  for (const inv of pendientes) {
     const name = inv.nombre_receptor;
-    if (!clientePendiente[name]) clientePendiente[name] = 0;
-    if (inv.moneda === 'USD') {
-      clientePendiente[name] += inv.total * (inv.tipo_cambio || 1);
-    } else {
-      clientePendiente[name] += inv.total;
-    }
+    clientePendiente[name] = (clientePendiente[name] || 0) + toMXN(inv.total, inv);
   }
-
-  const topClientes = Object.entries(clientePendiente)
+  const topClientesFull = Object.entries(clientePendiente)
     .sort(([, a], [, b]) => b - a)
-    .slice(0, 10)
-    .map(([cliente, monto]) => ({
-      cliente,
-      monto: Math.round(monto * 100) / 100,
-    }));
+    .map(([cliente, monto]) => ({ cliente, monto: round2(monto) }));
+  const topClientes = topClientesFull.slice(0, 10);
+  const topClientesTotal = round2(topClientes.reduce((s, c) => s + c.monto, 0));
+  const topClientesGrandTotal = round2(topClientesFull.reduce((s, c) => s + c.monto, 0));
 
-  // Proximas a vencer
-  const proximasVencer = enriched
+  // Listas de alertas.
+  const proximasVencer = rows
     .filter((i) => i.estado_visual === 'PROXIMO A VENCER')
     .sort((a, b) => (a.fecha_tentativa_pago || '').localeCompare(b.fecha_tentativa_pago || ''));
-
-  // Sin fecha de pago
-  const sinFecha = enriched
-    .filter((i) => i.estado_visual === 'SIN FECHA' || (i.estado_visual === 'PENDIENTE' && !i.fecha_tentativa_pago))
-    .sort((a, b) => a.fecha_emision.localeCompare(b.fecha_emision));
-
-  // Vencidas
-  const vencidas = enriched
+  const sinFecha = rows
+    .filter((i) => i.estado_visual === 'REVISIÓN' || (i.estado_visual === 'PENDIENTE' && !i.fecha_tentativa_pago))
+    .sort((a, b) => (a.fecha_emision || '').localeCompare(b.fecha_emision || ''));
+  const vencidas = rows
     .filter((i) => i.estado_visual === 'VENCIDO')
     .sort((a, b) => (a.fecha_tentativa_pago || '').localeCompare(b.fecha_tentativa_pago || ''));
 
   res.json({
     kpis: {
-      totalFacturadoMXN: Math.round(totalFacturadoMXN * 100) / 100,
-      totalCobrado: Math.round(totalCobrado * 100) / 100,
-      totalPendiente: Math.round(totalPendiente * 100) / 100,
-      sinFechaCount: statusCounts['SIN FECHA'] || 0,
+      totalFacturadoConIVA: round2(totalFacturadoConIVA),
+      totalFacturadoSinIVA: round2(totalFacturadoSinIVA),
+      totalCobradoConIVA: round2(totalCobradoConIVA),
+      totalCobradoSinIVA: round2(totalCobradoSinIVA),
+      totalPendienteConIVA: round2(totalPendienteConIVA),
+      totalPendienteSinIVA: round2(totalPendienteSinIVA),
+      totalFacturas,
+      totalActivas,
+      totalCanceladas,
+      sinFechaCount: statusCounts['REVISIÓN'] || 0,
       vencidasCount: statusCounts['VENCIDO'] || 0,
       proximasCount: statusCounts['PROXIMO A VENCER'] || 0,
-      totalFacturas: enriched.length,
     },
     statusCounts,
     monthlyChart,
     topClientes,
+    topClientesTotal,
+    topClientesGrandTotal,
     proximasVencer,
     proximasVencerTotal: proximasVencer.length,
     sinFecha,
@@ -152,6 +157,17 @@ router.get('/', (req, res) => {
     vencidas: vencidas.slice(0, 20),
     clientesList,
   });
+});
+
+// GET /api/dashboard/rezagadas?empresa=DLG
+// Detecta folios faltantes en la secuencia numérica por (empresa, serie, prefix).
+router.get('/rezagadas', (req, res) => {
+  const { empresa } = req.query;
+  const sql = empresa
+    ? 'SELECT empresa, serie, folio, estado FROM invoices WHERE folio IS NOT NULL AND empresa = ? ORDER BY empresa, serie, folio'
+    : 'SELECT empresa, serie, folio, estado FROM invoices WHERE folio IS NOT NULL ORDER BY empresa, serie, folio';
+  const rows = empresa ? db.prepare(sql).all(empresa) : db.prepare(sql).all();
+  res.json(detectRezagadas(rows));
 });
 
 module.exports = router;
