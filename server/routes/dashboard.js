@@ -33,6 +33,15 @@ router.get('/', (req, res) => {
     clientes: clientesParam,
   } = req.query;
 
+  // Paginación por sección. Cada lista del response se sirve en páginas de
+  // SECTION_LIMIT filas; el cliente las recarga pasando *Page.
+  const SECTION_LIMIT = 20;
+  const proximasPage = Math.max(1, parseInt(req.query.proximasPage) || 1);
+  const revisionPage = Math.max(1, parseInt(req.query.revisionPage) || 1);
+  const pendientesPage = Math.max(1, parseInt(req.query.pendientesPage) || 1);
+  const vencidasPage = Math.max(1, parseInt(req.query.vencidasPage) || 1);
+  const sliceSection = (arr, page) => arr.slice((page - 1) * SECTION_LIMIT, page * SECTION_LIMIT);
+
   // clientesList se calcula con el filtro de empresa únicamente (no con los filtros
   // de fecha/estado), para que el selector no oculte opciones al filtrar.
   const empresaFilter = buildBaseFilters({ empresa });
@@ -165,15 +174,21 @@ router.get('/', (req, res) => {
     topClientesTotalSinIVA,
     topClientesGrandTotal,
     topClientesGrandTotalSinIVA,
-    proximasVencer,
+    proximasVencer: sliceSection(proximasVencer, proximasPage),
     proximasVencerTotal: proximasVencer.length,
-    revision,
+    proximasVencerPage: proximasPage,
+    revision: sliceSection(revision, revisionPage),
     revisionTotal: revision.length,
-    pendientes: pendientesEstado,
+    revisionPage,
+    pendientes: sliceSection(pendientesEstado, pendientesPage),
     pendientesTotal: pendientesEstado.length,
-    sinFecha,
-    sinFechaTotal: sinFecha.length,
-    vencidas: vencidas.slice(0, 20),
+    pendientesPage,
+    sinFecha: sliceSection(revision, revisionPage),
+    sinFechaTotal: revision.length,
+    vencidas: sliceSection(vencidas, vencidasPage),
+    vencidasTotal: vencidas.length,
+    vencidasPage,
+    sectionLimit: SECTION_LIMIT,
     clientesList,
   });
 });

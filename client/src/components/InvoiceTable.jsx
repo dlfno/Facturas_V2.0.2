@@ -108,8 +108,6 @@ export default function InvoiceTable({
   pagination,
   onPageChange,
   onLimitChange,
-  locateInvoiceId,
-  onLocateDone,
 }) {
   const [aliasInvoice, setAliasInvoice] = useState(null);
   const [selected, setSelected] = useState(new Set());
@@ -127,43 +125,6 @@ export default function InvoiceTable({
   const scrollContainerRef = useRef(null);
   const prevPinnedColsRef = useRef({ fecha_emision: false, nombre_receptor: false });
   const [stickyLefts, setStickyLefts] = useState({});
-
-  // Scroll + highlight cuando se pide localizar una factura específica.
-  // Reintenta con requestAnimationFrame hasta que el elemento exista en DOM
-  // (la data nueva puede llegar uno o dos frames después del setLocateId).
-  useEffect(() => {
-    if (!locateInvoiceId) return;
-    let cancelled = false;
-    let cleanup = () => {};
-    let frames = 0;
-    const maxFrames = 30;
-
-    const tryLocate = () => {
-      if (cancelled) return;
-      const el = document.getElementById(`invoice-${locateInvoiceId}`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el.classList.add('highlight-row');
-        const t = setTimeout(() => {
-          el.classList.remove('highlight-row');
-          onLocateDone?.();
-        }, 4000);
-        cleanup = () => clearTimeout(t);
-        return;
-      }
-      if (frames++ < maxFrames) {
-        requestAnimationFrame(tryLocate);
-      } else {
-        onLocateDone?.();
-      }
-    };
-
-    requestAnimationFrame(tryLocate);
-    return () => {
-      cancelled = true;
-      cleanup();
-    };
-  }, [locateInvoiceId, invoices, onLocateDone]);
 
   const allSelected = invoices.length > 0 && selected.size === invoices.length;
 
@@ -454,6 +415,66 @@ export default function InvoiceTable({
     return inv[col.key] || '-';
   };
 
+  const paginationBar = pagination && pagination.total > 0 ? (
+    <div className="flex items-center justify-between px-4 py-3 border-gray-200 bg-gray-50">
+      <div className="flex items-center gap-4 flex-wrap">
+        <p className="text-sm text-gray-600">
+          Mostrando {(pagination.page - 1) * pagination.limit + 1}-
+          {Math.min(pagination.page * pagination.limit, pagination.total)} de{' '}
+          {pagination.total}
+        </p>
+        {onLimitChange && (
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs text-gray-500">Por página:</label>
+            <select
+              value={pagination.limit}
+              onChange={(e) => onLimitChange(Number(e.target.value))}
+              className="border rounded px-1.5 py-0.5 text-sm bg-white"
+            >
+              {[25, 50, 100, 200].map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+      {pagination.pages > 1 && (
+        <div className="flex gap-1">
+          <button
+            onClick={() => onPageChange?.(pagination.page - 1)}
+            disabled={pagination.page <= 1}
+            className="px-3 py-1 border rounded text-sm disabled:opacity-40 hover:bg-gray-100"
+          >
+            Anterior
+          </button>
+          {Array.from({ length: Math.min(pagination.pages, 5) }, (_, i) => {
+            const start = Math.max(1, pagination.page - 2);
+            const p = start + i;
+            if (p > pagination.pages) return null;
+            return (
+              <button
+                key={p}
+                onClick={() => onPageChange?.(p)}
+                className={`px-3 py-1 border rounded text-sm ${
+                  p === pagination.page ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-gray-100'
+                }`}
+              >
+                {p}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => onPageChange?.(pagination.page + 1)}
+            disabled={pagination.page >= pagination.pages}
+            className="px-3 py-1 border rounded text-sm disabled:opacity-40 hover:bg-gray-100"
+          >
+            Siguiente
+          </button>
+        </div>
+      )}
+    </div>
+  ) : null;
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       {selected.size > 0 && (
@@ -475,6 +496,8 @@ export default function InvoiceTable({
           </div>
         </div>
       )}
+
+      {paginationBar && <div className="border-b border-gray-200">{paginationBar}</div>}
 
       <div ref={scrollContainerRef} className="overflow-x-auto">
         <table ref={tableRef} className="w-full text-sm">
@@ -666,65 +689,7 @@ export default function InvoiceTable({
         />
       )}
 
-      {pagination && pagination.total > 0 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
-          <div className="flex items-center gap-4 flex-wrap">
-            <p className="text-sm text-gray-600">
-              Mostrando {(pagination.page - 1) * pagination.limit + 1}-
-              {Math.min(pagination.page * pagination.limit, pagination.total)} de{' '}
-              {pagination.total}
-            </p>
-            {onLimitChange && (
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-gray-500">Por página:</label>
-                <select
-                  value={pagination.limit}
-                  onChange={(e) => onLimitChange(Number(e.target.value))}
-                  className="border rounded px-1.5 py-0.5 text-sm bg-white"
-                >
-                  {[25, 50, 100, 200].map((n) => (
-                    <option key={n} value={n}>{n}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-          {pagination.pages > 1 && (
-            <div className="flex gap-1">
-              <button
-                onClick={() => onPageChange?.(pagination.page - 1)}
-                disabled={pagination.page <= 1}
-                className="px-3 py-1 border rounded text-sm disabled:opacity-40 hover:bg-gray-100"
-              >
-                Anterior
-              </button>
-              {Array.from({ length: Math.min(pagination.pages, 5) }, (_, i) => {
-                const start = Math.max(1, pagination.page - 2);
-                const p = start + i;
-                if (p > pagination.pages) return null;
-                return (
-                  <button
-                    key={p}
-                    onClick={() => onPageChange?.(p)}
-                    className={`px-3 py-1 border rounded text-sm ${
-                      p === pagination.page ? 'bg-blue-600 text-white border-blue-600' : 'hover:bg-gray-100'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                );
-              })}
-              <button
-                onClick={() => onPageChange?.(pagination.page + 1)}
-                disabled={pagination.page >= pagination.pages}
-                className="px-3 py-1 border rounded text-sm disabled:opacity-40 hover:bg-gray-100"
-              >
-                Siguiente
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      {paginationBar && <div className="border-t border-gray-200">{paginationBar}</div>}
     </div>
   );
 }

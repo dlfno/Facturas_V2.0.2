@@ -30,7 +30,7 @@ function AlertSection({ icon: Icon, color, title, count, items, onClickItem }) {
           {items.map((inv) => (
             <li
               key={inv.id}
-              onClick={() => onClickItem?.(inv.id)}
+              onClick={() => onClickItem?.(inv)}
               className="text-xs cursor-pointer hover:underline py-0.5"
             >
               {inv.folio && `${inv.serie || ''}${inv.folio} - `}

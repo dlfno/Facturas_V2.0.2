@@ -52,21 +52,28 @@ export default function DashboardPage() {
       empresa,
       clientes: selectedClientes.length > 0 ? selectedClientes : null,
       ...filters,
+      proximasPage,
+      revisionPage: sinFechaPage,
+      pendientesPage,
     })
       .then((d) => {
         setData(d);
         if (d.clientesList) setClientesList(d.clientesList);
-        setSinFechaPage(1);
-        setProximasPage(1);
-        setPendientesPage(1);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [empresa, selectedClientes, filters]);
+  }, [empresa, selectedClientes, filters, proximasPage, sinFechaPage, pendientesPage]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Reset de páginas al cambiar filtros o cliente o empresa.
+  useEffect(() => {
+    setProximasPage(1);
+    setSinFechaPage(1);
+    setPendientesPage(1);
+  }, [empresa, selectedClientes, filters]);
 
   const handleTabChange = (t) => {
     setSelectedClientes([]);
@@ -152,14 +159,11 @@ export default function DashboardPage() {
           {/* Grid superior: Próximas a Vencer | Pendientes */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {(() => {
-              const PV_PAGE_SIZE = 20;
-              const total = data.proximasVencerTotal ?? data.proximasVencer?.length ?? 0;
+              const PV_PAGE_SIZE = data.sectionLimit || 20;
+              const total = data.proximasVencerTotal ?? 0;
               const pages = Math.ceil(total / PV_PAGE_SIZE);
               const page = proximasPage;
-              const slice = (data.proximasVencer || []).slice(
-                (page - 1) * PV_PAGE_SIZE,
-                page * PV_PAGE_SIZE
-              );
+              const slice = data.proximasVencer || [];
               return (
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
                   <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
@@ -234,14 +238,11 @@ export default function DashboardPage() {
 
             {/* Pendientes */}
             {(() => {
-              const PND_PAGE_SIZE = 20;
-              const total = data.pendientesTotal ?? data.pendientes?.length ?? 0;
+              const PND_PAGE_SIZE = data.sectionLimit || 20;
+              const total = data.pendientesTotal ?? 0;
               const pages = Math.ceil(total / PND_PAGE_SIZE);
               const page = pendientesPage;
-              const slice = (data.pendientes || []).slice(
-                (page - 1) * PND_PAGE_SIZE,
-                page * PND_PAGE_SIZE
-              );
+              const slice = data.pendientes || [];
               return (
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
                   <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
@@ -321,14 +322,11 @@ export default function DashboardPage() {
 
             {/* Facturas en Revisión */}
             {(() => {
-              const SF_PAGE_SIZE = 20;
-              const total = data.revisionTotal ?? data.revision?.length ?? 0;
+              const SF_PAGE_SIZE = data.sectionLimit || 20;
+              const total = data.revisionTotal ?? 0;
               const pages = Math.ceil(total / SF_PAGE_SIZE);
               const page = sinFechaPage;
-              const slice = (data.revision || []).slice(
-                (page - 1) * SF_PAGE_SIZE,
-                page * SF_PAGE_SIZE
-              );
+              const slice = data.revision || [];
               return (
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
                   <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">

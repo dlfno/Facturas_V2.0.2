@@ -94,6 +94,10 @@ export function getDashboard({
   fecha_hasta,
   fecha_tent_desde,
   fecha_tent_hasta,
+  proximasPage,
+  revisionPage,
+  pendientesPage,
+  vencidasPage,
 } = {}) {
   const params = {};
   if (empresa) params.empresa = empresa;
@@ -109,6 +113,10 @@ export function getDashboard({
   if (fecha_hasta) params.fecha_hasta = fecha_hasta;
   if (fecha_tent_desde) params.fecha_tent_desde = fecha_tent_desde;
   if (fecha_tent_hasta) params.fecha_tent_hasta = fecha_tent_hasta;
+  if (proximasPage) params.proximasPage = proximasPage;
+  if (revisionPage) params.revisionPage = revisionPage;
+  if (pendientesPage) params.pendientesPage = pendientesPage;
+  if (vencidasPage) params.vencidasPage = vencidasPage;
   const query = new URLSearchParams(params).toString();
   return request(`/dashboard${query ? '?' + query : ''}`);
 }

@@ -4,7 +4,7 @@ import FilterBar from '../components/FilterBar';
 import AlertPanel from '../components/AlertPanel';
 import InvoiceTable from '../components/InvoiceTable';
 import ExportButton from '../components/ExportButton';
-import { getInvoices, locateInvoice } from '../api';
+import { getInvoices } from '../api';
 
 const EMPTY_FILTERS = {
   search: '',
@@ -30,18 +30,15 @@ export default function CompanyPage({ empresa }) {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
   const [loading, setLoading] = useState(false);
-  const [locateId, setLocateId] = useState(null);
 
-  const handleLocateInvoice = async (id) => {
-    try {
-      const { found, page: targetPage } = await locateInvoice({ empresa, id, sort, order, limit });
-      if (!found) return;
-      setFilters(EMPTY_FILTERS); // limpiar para garantizar que la factura sea visible
-      setPage(targetPage);
-      setLocateId(id);
-    } catch (err) {
-      console.error('Error localizando factura:', err);
-    }
+  // Fallback temporal: al hacer click en una factura del AlertPanel, ponemos
+  // su folio (CFDI) en la barra de búsqueda. El fix "bueno" (scroll + highlight)
+  // se retomará cuando tengamos la estrategia definitiva.
+  const handleAlertClick = (inv) => {
+    const term = inv?.folio || inv?.uuid;
+    if (!term) return;
+    setFilters({ ...EMPTY_FILTERS, search: String(term) });
+    setPage(1);
   };
 
   const fetchData = useCallback(async () => {
@@ -125,7 +122,7 @@ export default function CompanyPage({ empresa }) {
         <UploadZone empresa={empresa} onUploaded={fetchData} />
       )}
 
-      <AlertPanel alerts={alerts} onClickItem={handleLocateInvoice} />
+      <AlertPanel alerts={alerts} onClickItem={handleAlertClick} />
 
       <FilterBar filters={filters} onChange={handleFilterChange} clientes={clientes} />
 
@@ -138,8 +135,6 @@ export default function CompanyPage({ empresa }) {
         pagination={pagination}
         onPageChange={setPage}
         onLimitChange={handleLimitChange}
-        locateInvoiceId={locateId}
-        onLocateDone={() => setLocateId(null)}
       />
     </div>
   );
