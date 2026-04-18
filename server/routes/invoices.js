@@ -194,39 +194,6 @@ router.delete('/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// GET /api/invoices/:id/locate?empresa=DLG&sort=fecha_emision&order=desc&limit=50
-// Retorna { found, page } calculando la posición del invoice dentro del orden
-// por defecto. Ignora filtros del usuario para garantizar que siempre se encuentre.
-router.get('/:id/locate', (req, res) => {
-  const id = parseInt(req.params.id);
-  const { empresa, sort = 'fecha_emision', order = 'desc', limit = 50 } = req.query;
-
-  const allowedSorts = [
-    'fecha_emision', 'folio', 'uuid', 'nombre_receptor', 'total', 'subtotal',
-    'fecha_tentativa_pago', 'estado', 'proyecto', 'moneda', 'created_at',
-  ];
-  const sortCol = allowedSorts.includes(sort) ? sort : 'fecha_emision';
-  const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
-
-  const empresaWhere = empresa ? 'WHERE empresa = @empresa' : '';
-  const params = { id };
-  if (empresa) params.empresa = empresa;
-
-  const row = db
-    .prepare(
-      `WITH ordered AS (
-         SELECT id, ROW_NUMBER() OVER (ORDER BY ${sortCol} ${sortOrder}, id ASC) AS rn
-         FROM invoices
-         ${empresaWhere}
-       )
-       SELECT rn FROM ordered WHERE id = @id`
-    )
-    .get(params);
-
-  if (!row) return res.json({ found: false });
-  const page = Math.ceil(row.rn / parseInt(limit));
-  res.json({ found: true, page });
-});
 
 function computeEstadoVisual(row, today) {
   if (row.estado === 'CANCELADA') return 'CANCELADA';

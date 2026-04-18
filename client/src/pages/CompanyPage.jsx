@@ -31,16 +31,6 @@ export default function CompanyPage({ empresa }) {
   const [limit, setLimit] = useState(50);
   const [loading, setLoading] = useState(false);
 
-  // Fallback temporal: al hacer click en una factura del AlertPanel, ponemos
-  // su folio (CFDI) en la barra de búsqueda. El fix "bueno" (scroll + highlight)
-  // se retomará cuando tengamos la estrategia definitiva.
-  const handleAlertClick = (inv) => {
-    const term = inv?.folio || inv?.uuid;
-    if (!term) return;
-    setFilters({ ...EMPTY_FILTERS, search: String(term) });
-    setPage(1);
-  };
-
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -122,7 +112,7 @@ export default function CompanyPage({ empresa }) {
         <UploadZone empresa={empresa} onUploaded={fetchData} />
       )}
 
-      <AlertPanel alerts={alerts} onClickItem={handleAlertClick} />
+      <AlertPanel alerts={alerts} />
 
       <FilterBar filters={filters} onChange={handleFilterChange} clientes={clientes} />
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle, Clock, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
-function AlertSection({ icon: Icon, color, title, count, items, onClickItem }) {
+function AlertSection({ icon: Icon, color, title, count, items, copiedId, onCopy }) {
   const [open, setOpen] = useState(false);
   if (count === 0) return null;
 
@@ -30,12 +30,20 @@ function AlertSection({ icon: Icon, color, title, count, items, onClickItem }) {
           {items.map((inv) => (
             <li
               key={inv.id}
-              onClick={() => onClickItem?.(inv)}
-              className="text-xs cursor-pointer hover:underline py-0.5"
+              onClick={() => onCopy(inv)}
+              className="text-xs cursor-pointer hover:underline py-0.5 flex items-center gap-2"
+              title="Click para copiar CFDI al portapapeles"
             >
-              {inv.folio && `${inv.serie || ''}${inv.folio} - `}
-              {inv.nombre_receptor} - ${formatMoney(inv.total)} {inv.moneda}
-              {inv.fecha_tentativa_pago && ` (Vence: ${inv.fecha_tentativa_pago})`}
+              <span>
+                {inv.folio && `${inv.serie || ''}${inv.folio} - `}
+                {inv.nombre_receptor} - ${formatMoney(inv.total)} {inv.moneda}
+                {inv.fecha_tentativa_pago && ` (Vence: ${inv.fecha_tentativa_pago})`}
+              </span>
+              {copiedId === inv.id && (
+                <span className="text-green-600 font-semibold text-[10px] uppercase tracking-wide shrink-0">
+                  Copiado
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -52,10 +60,23 @@ export default function AlertPanel({ alerts }) {
   const sinFecha = alerts?.sinFecha || [];
   const proxVencer = alerts?.proxVencer || [];
   const vencidas = alerts?.vencidas || [];
+  const [copiedId, setCopiedId] = useState(null);
 
   if (sinFecha.length === 0 && proxVencer.length === 0 && vencidas.length === 0) {
     return null;
   }
+
+  const handleCopy = (inv) => {
+    const cfdi = `${inv.serie || ''}${inv.folio || ''}`;
+    if (!cfdi) return;
+    const done = () => {
+      setCopiedId(inv.id);
+      setTimeout(() => setCopiedId((prev) => (prev === inv.id ? null : prev)), 2000);
+    };
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(cfdi).then(done).catch(() => {});
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -65,6 +86,8 @@ export default function AlertPanel({ alerts }) {
         title="sin fecha tentativa"
         count={sinFecha.length}
         items={sinFecha}
+        copiedId={copiedId}
+        onCopy={handleCopy}
       />
       <AlertSection
         icon={Clock}
@@ -72,6 +95,8 @@ export default function AlertPanel({ alerts }) {
         title="próximas a vencer"
         count={proxVencer.length}
         items={proxVencer}
+        copiedId={copiedId}
+        onCopy={handleCopy}
       />
       <AlertSection
         icon={AlertTriangle}
@@ -79,6 +104,8 @@ export default function AlertPanel({ alerts }) {
         title="vencidas"
         count={vencidas.length}
         items={vencidas}
+        copiedId={copiedId}
+        onCopy={handleCopy}
       />
     </div>
   );
