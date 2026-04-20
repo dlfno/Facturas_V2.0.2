@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Trash2, Pencil, Check, X, RefreshCw } from 'lucide-react';
 import { getRfcs, addRfc, deleteRfc, reassignRfcs, getAliases, saveAlias, deleteAlias } from '../api';
 import ConfirmModal from '../components/ConfirmModal';
+import { useLiveUpdates } from '../LiveUpdatesContext';
 
 export default function SettingsPage() {
   const [rfcs, setRfcs] = useState([]);
@@ -24,6 +25,10 @@ export default function SettingsPage() {
     fetchRfcs();
     fetchAliases();
   }, []);
+
+  // Sincronización en vivo: refetch cuando otro usuario cambia alias o RFCs.
+  useLiveUpdates(['aliases:changed'], fetchAliases, 300);
+  useLiveUpdates(['settings:changed'], fetchRfcs, 300);
 
   const handleAddRfc = async () => {
     if (!newRfc.trim()) return;

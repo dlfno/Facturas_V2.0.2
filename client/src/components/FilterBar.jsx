@@ -26,7 +26,7 @@ export default function FilterBar({ filters, onChange, clientes = [], hideClient
       fecha_hasta: '',
       fecha_tent_desde: '',
       fecha_tent_hasta: '',
-      cliente: '',
+      clientes: [],
     });
   };
 
@@ -38,7 +38,7 @@ export default function FilterBar({ filters, onChange, clientes = [], hideClient
     filters.fecha_hasta ||
     filters.fecha_tent_desde ||
     filters.fecha_tent_hasta ||
-    filters.cliente;
+    (filters.clientes && filters.clientes.length > 0);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
@@ -148,18 +148,17 @@ export default function FilterBar({ filters, onChange, clientes = [], hideClient
         {!hideCliente && clientes.length > 0 && (
           <div>
             <label className="block text-xs text-gray-500 mb-1">Cliente</label>
-            <select
-              value={filters.cliente || ''}
-              onChange={(e) => update('cliente', e.target.value)}
-              className="border rounded-lg px-2 py-1.5 text-sm max-w-[200px]"
-            >
-              <option value="">Todos</option>
-              {clientes.map((c) => (
-                <option key={c} value={c}>
-                  {c.length > 30 ? c.substring(0, 30) + '...' : c}
-                </option>
-              ))}
-            </select>
+            <MultiSelect
+              items={clientes.map((c) => ({ key: c, label: c }))}
+              selected={filters.clientes || []}
+              onChange={(arr) => update('clientes', arr)}
+              allLabel="Todos los clientes"
+              itemLabelSingular="cliente"
+              itemLabelPlural="clientes"
+              searchable
+              width="w-80"
+              align="left"
+            />
           </div>
         )}
       </div>

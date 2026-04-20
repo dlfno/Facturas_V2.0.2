@@ -7,6 +7,7 @@ import FilterBar from '../components/FilterBar';
 import ActiveFilterChips from '../components/ActiveFilterChips';
 import RezagadasPanel from '../components/RezagadasPanel';
 import { getDashboard, updateInvoice } from '../api';
+import { useLiveUpdates } from '../LiveUpdatesContext';
 
 function formatMoney(n) {
   return (n || 0).toLocaleString('es-MX', {
@@ -67,6 +68,9 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Sincronización en vivo: refetch cuando otro usuario cambia algo relevante.
+  useLiveUpdates(['invoices:changed', 'aliases:changed', 'settings:changed'], fetchData, 300);
 
   // Reset de páginas al cambiar filtros o cliente o empresa.
   useEffect(() => {

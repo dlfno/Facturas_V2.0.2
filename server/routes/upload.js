@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const db = require('../db');
+const bus = require('../events');
 const { parseCFDI } = require('../utils/xmlParser');
 
 const router = express.Router();
@@ -95,6 +96,7 @@ router.post('/', upload.array('files', 500), (req, res) => {
   insertMany(req.files);
 
   res.json(results);
+  if (results.insertados > 0) bus.emit('invoices:changed');
 });
 
 module.exports = router;

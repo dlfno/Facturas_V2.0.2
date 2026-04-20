@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../db');
+const bus = require('../events');
 
 const router = express.Router();
 
@@ -29,12 +30,14 @@ router.post('/', (req, res) => {
   });
 
   res.json({ ok: true });
+  bus.emit('aliases:changed');
 });
 
 // DELETE /api/aliases/:id
 router.delete('/:id', (req, res) => {
   db.prepare('DELETE FROM client_aliases WHERE id = ?').run(parseInt(req.params.id));
   res.json({ ok: true });
+  bus.emit('aliases:changed');
 });
 
 module.exports = router;

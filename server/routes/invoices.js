@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../db');
+const bus = require('../events');
 const { buildBaseFilters, buildEstadoFilter, estadoSqlExpr } = require('../utils/invoiceFilters');
 
 const router = express.Router();
@@ -19,6 +20,7 @@ router.get('/', (req, res) => {
     fecha_tent_desde,
     fecha_tent_hasta,
     cliente,
+    clientes: clientesParam,
     page = 1,
     limit = 50,
     sort = 'fecha_emision',
@@ -27,7 +29,7 @@ router.get('/', (req, res) => {
 
   // Base conditions: all filters EXCEPT estado (used for both paginated data and alerts)
   const { conditions: baseConditions, params: baseParams, where: baseWhere } = buildBaseFilters({
-    empresa, moneda, fecha_desde, fecha_hasta, fecha_tent_desde, fecha_tent_hasta, cliente, search,
+    empresa, moneda, fecha_desde, fecha_hasta, fecha_tent_desde, fecha_tent_hasta, cliente, clientes: clientesParam, search,
   });
 
   // Estado filter (multi-select via `estados=A|B|C`, single `estado=X` legacy).
@@ -175,6 +177,7 @@ router.patch('/:id', (req, res) => {
   ).get(parseInt(id));
   const today = new Date().toISOString().substring(0, 10);
   res.json({ ...updated, nombre_display: updated.cliente_alias || updated.nombre_receptor, estado_visual: computeEstadoVisual(updated, today) });
+  bus.emit('invoices:changed');
 });
 
 // POST /api/invoices/bulk-delete
@@ -186,12 +189,14 @@ router.post('/bulk-delete', (req, res) => {
   const placeholders = ids.map(() => '?').join(',');
   const result = db.prepare(`DELETE FROM invoices WHERE id IN (${placeholders})`).run(...ids.map(Number));
   res.json({ deleted: result.changes });
+  bus.emit('invoices:changed');
 });
 
 // DELETE /api/invoices/:id
 router.delete('/:id', (req, res) => {
   db.prepare('DELETE FROM invoices WHERE id = ?').run(parseInt(req.params.id));
   res.json({ ok: true });
+  bus.emit('invoices:changed');
 });
 
 

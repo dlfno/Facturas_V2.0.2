@@ -15,6 +15,7 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/export', require('./routes/export'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/aliases', require('./routes/aliases'));
+app.use('/api/events', require('./routes/events'));
 
 // Serve static build in production
 const distPath = path.join(__dirname, '..', 'client', 'dist');

@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../db');
+const bus = require('../events');
 
 const router = express.Router();
 
@@ -35,6 +36,8 @@ router.post('/rfcs', (req, res) => {
   ).run(empresa, rfc);
 
   res.json({ ok: true, reassigned: result.changes });
+  bus.emit('settings:changed');
+  if (result.changes > 0) bus.emit('invoices:changed');
 });
 
 // POST /api/settings/reassign — re-scan all invoices against current RFC config
@@ -52,12 +55,14 @@ router.post('/reassign', (req, res) => {
   });
   tx();
   res.json({ ok: true, reassigned: total });
+  if (total > 0) bus.emit('invoices:changed');
 });
 
 // DELETE /api/settings/rfcs/:id
 router.delete('/rfcs/:id', (req, res) => {
   db.prepare('DELETE FROM company_rfcs WHERE id = ?').run(parseInt(req.params.id));
   res.json({ ok: true });
+  bus.emit('settings:changed');
 });
 
 module.exports = router;

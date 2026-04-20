@@ -5,6 +5,7 @@ import AlertPanel from '../components/AlertPanel';
 import InvoiceTable from '../components/InvoiceTable';
 import ExportButton from '../components/ExportButton';
 import { getInvoices } from '../api';
+import { useLiveUpdates } from '../LiveUpdatesContext';
 
 const EMPTY_FILTERS = {
   search: '',
@@ -14,7 +15,7 @@ const EMPTY_FILTERS = {
   fecha_hasta: '',
   fecha_tent_desde: '',
   fecha_tent_hasta: '',
-  cliente: '',
+  clientes: [],
 };
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -61,6 +62,9 @@ export default function CompanyPage({ empresa }) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Sincronización en vivo: refetch cuando otro usuario cambia facturas o alias.
+  useLiveUpdates(['invoices:changed', 'aliases:changed'], fetchData, 300);
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
