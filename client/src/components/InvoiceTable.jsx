@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { ChevronUp, ChevronDown, ChevronRight, Trash2, Tag, Undo2, Check, X, Pin, PinOff } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import AliasModal from './AliasModal';
+import ClientNameCell from './ClientNameCell';
 import ConfirmModal from './ConfirmModal';
 import { updateInvoice, deleteInvoice, deleteInvoices } from '../api';
 
@@ -386,10 +387,7 @@ export default function InvoiceTable({
     }
     if (col.key === 'nombre_receptor') {
       return (
-        <div className="flex items-center gap-1 max-w-xs">
-          <span className="truncate" title={`${inv.nombre_display}${inv.cliente_alias ? ` (XML: ${inv.nombre_receptor})` : ''}`}>
-            {inv.nombre_display || inv.nombre_receptor}
-          </span>
+        <ClientNameCell invoice={inv}>
           <button
             onClick={() => setAliasInvoice(inv)}
             className={`shrink-0 p-0.5 rounded transition-colors ${
@@ -401,7 +399,7 @@ export default function InvoiceTable({
           >
             <Tag size={12} />
           </button>
-        </div>
+        </ClientNameCell>
       );
     }
     if (col.key === 'fecha_pago') {
@@ -649,9 +647,14 @@ export default function InvoiceTable({
               <button onClick={() => setPagoModal(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
             </div>
             <div className="p-5 space-y-3">
-              <p className="text-sm text-gray-600">
-                {pagoModal.serie || ''}{pagoModal.folio} — {pagoModal.nombre_display || pagoModal.nombre_receptor}
-              </p>
+              <div className="text-sm text-gray-600">
+                <p>
+                  {pagoModal.serie || ''}{pagoModal.folio} — {pagoModal.nombre_display || pagoModal.nombre_receptor}
+                </p>
+                {pagoModal.cliente_alias && (
+                  <p className="text-xs text-gray-500 mt-0.5">{pagoModal.nombre_receptor}</p>
+                )}
+              </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Fecha de pago</label>
                 <input

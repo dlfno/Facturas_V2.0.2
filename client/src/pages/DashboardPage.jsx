@@ -6,6 +6,7 @@ import ClientSelector from '../components/ClientSelector';
 import FilterBar from '../components/FilterBar';
 import ActiveFilterChips from '../components/ActiveFilterChips';
 import RezagadasPanel from '../components/RezagadasPanel';
+import ClientNameCell from '../components/ClientNameCell';
 import { getDashboard, updateInvoice } from '../api';
 import { useLiveUpdates } from '../LiveUpdatesContext';
 
@@ -192,8 +193,8 @@ export default function DashboardPage() {
                                 <td className="py-2 font-mono text-xs">
                                   {inv.serie || ''}{inv.folio}
                                 </td>
-                                <td className="py-2 max-w-[200px] truncate">
-                                  {inv.nombre_display || inv.nombre_receptor}
+                                <td className="py-2">
+                                  <ClientNameCell invoice={inv} maxWidthClass="max-w-[200px]" />
                                 </td>
                                 <td className="py-2 font-mono">
                                   ${formatMoney(inv.total)}
@@ -271,8 +272,8 @@ export default function DashboardPage() {
                                 <td className="py-2 font-mono text-xs">
                                   {inv.serie || ''}{inv.folio}
                                 </td>
-                                <td className="py-2 max-w-[200px] truncate">
-                                  {inv.nombre_display || inv.nombre_receptor}
+                                <td className="py-2">
+                                  <ClientNameCell invoice={inv} maxWidthClass="max-w-[200px]" />
                                 </td>
                                 <td className="py-2 font-mono">
                                   ${formatMoney(inv.total)}
@@ -363,8 +364,8 @@ export default function DashboardPage() {
                                 <td className="py-2 font-mono text-xs">
                                   {inv.serie || ''}{inv.folio}
                                 </td>
-                                <td className="py-2 max-w-[200px] truncate">
-                                  {inv.nombre_display || inv.nombre_receptor}
+                                <td className="py-2">
+                                  <ClientNameCell invoice={inv} maxWidthClass="max-w-[200px]" />
                                 </td>
                                 <td className="py-2 font-mono">
                                   ${formatMoney(inv.total)}
